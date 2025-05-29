@@ -1,11 +1,10 @@
+"use strict";
 // import { chatService } from '../../chat/chat.service';
-
 // interface IChat {
 //   _id: string;
 //   status: string;
 //   participants: string[];
 // }
-
 // export const handleChatEvents = async (
 //   socket: any,
 //   data: any,
@@ -13,7 +12,6 @@
 // ) => {
 //   try {
 //     // console.log('new chat===========', data);
-
 //     if (!data.participant || !data.userId) {
 //       callback({
 //         status: 'Error',
@@ -35,11 +33,8 @@
 //         });
 //         return;
 //       }
-
 //       chat = await chatService.createChat(data.userId, data.participant);
-
 //       // console.log('chat=======****======', chat);
-
 //       if (chat && '_id' in chat) {
 //         callback({
 //           status: 'Success',

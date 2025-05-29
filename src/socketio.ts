@@ -1,9 +1,9 @@
 import jwt from 'jsonwebtoken';
 import { Server, Socket } from 'socket.io';
 import config from './app/config';
-import { socketVerifyToken } from './app/helpers/socketVerifyToken';
-import { handleChatEvents } from './app/modules/socket/events/chatEvents';
-import { handleMessageEvents } from './app/modules/socket/events/messageEvents';
+// import { socketVerifyToken } from './app/helpers/socketVerifyToken';
+// import { handleChatEvents } from './app/modules/socket/events/chatEvents';
+// import { handleMessageEvents } from './app/modules/socket/events/messageEvents';
 
 const socketIO = (io: Server) => {
   // Initialize an object to store the active users
@@ -29,13 +29,14 @@ const socketIO = (io: Server) => {
       // // console.log('activeUsers down', userSocketMap);
 
       // Handle 'add-new-chat' event
-      socket.on('add-new-chat', (data, callback) =>
-        handleChatEvents(socket, data, callback),
-      );
-      // Handle other events, like 'add-new-message'
-      socket.on('add-new-message', (data, callback) =>
-        handleMessageEvents(socket, data, callback, io),
-      );
+      
+      // socket.on('add-new-chat', (data, callback) =>
+      //   handleChatEvents(socket, data, callback),
+      // );
+      // // Handle other events, like 'add-new-message'
+      // socket.on('add-new-message', (data, callback) =>
+      //   handleMessageEvents(socket, data, callback, io),
+      // );
 
       // socket.on('disconnect', () => {
       //   if (userId) {

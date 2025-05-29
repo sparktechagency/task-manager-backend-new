@@ -8,7 +8,6 @@ import paymentRouter from '../modules/payment/payment.route';
 // import walletRouter from '../modules/wallet/wallet.route';
 import withdrawRouter from '../modules/withdraw/withdraw.route';
 // import cencelBookingRoutes from '../modules/cencelBooking/cencelBooking.route';
-import favoriteBusinessRoutes from '../modules/favorite/favorite.route';
 import reviewRouter from '../modules/ratings/ratings.route';
 import chatRouter from '../modules/chat/chat.route';
 import messageRouter from '../modules/message/message.route';
@@ -53,10 +52,7 @@ const moduleRoutes = [
     path: '/withdraw',
     route: withdrawRouter,
   },
-  {
-    path: '/favorite-business',
-    route: favoriteBusinessRoutes,
-  },
+  
   {
     path: '/review',
     route: reviewRouter,
