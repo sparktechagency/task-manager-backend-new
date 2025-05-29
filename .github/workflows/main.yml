@@ -5,59 +5,40 @@ on:
     branches: ["main"]
 
 jobs:
-  demo-jobs:
+  build-and-test:
     runs-on: ubuntu-latest
 
     strategy:
       matrix:
-        node-version: [22.x]
+        node-version: [22.x] # You can add more Node.js versions here if needed, e.g., [18.x, 20.x, 22.x]
 
     steps:
-      - name: Checkout
+      - name: Checkout repository code
         uses: actions/checkout@v4
 
-      - name: Print start message
-        run: echo "Build Action Started.."
-
-      - name: Run a one-line script
-        run: echo "Hello world!"
-
-      - name: Run a multi-line script
-        run: |
-          echo Add other actions to build, test, and deploy your project.
-
-      - name: List files
-        run: ls ${{ github.workspace }}
-
-      - name: Print Node context
-        env:
-          GITHUB_CONTEXT: ${{ toJson(github) }}
-        run: echo "$GITHUB_CONTEXT"
-
-      - name: Actions Completed
-        run: echo "Build Action Completed.."
-
-  test:
-    runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        node-version: [22.x]
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Use Node.js ${{ matrix.node-version }}
+      - name: Set up Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
+          cache: 'npm' # This caches your node_modules to speed up subsequent runs
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci # 'npm ci' is preferred over 'npm install' in CI environments for reproducible builds
 
       - name: Run tests
         run: npm test
 
-      - name: Test completion message
-        run: echo "All tests passed"
+      # --- Optional Steps ---
+
+      # Uncomment the following block if your backend project requires a build step
+      # For example, if you're transpiling TypeScript to JavaScript, or bundling your code.
+      # - name: Build project
+      #   run: npm run build
+
+      # Uncomment the following block to add a step for deploying your application
+      # This is a placeholder; you'd replace 'echo "Deploying..."' with actual deployment commands
+      # - name: Deploy to Staging Environment
+      #   run: echo "Deployment process would go here!"
+      #   env:
+      #     AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }} # Example for AWS deployment
+      #     AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
