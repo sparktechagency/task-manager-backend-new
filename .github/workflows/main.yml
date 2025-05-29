@@ -5,9 +5,9 @@ on:
     branches: ["main"]
 
 jobs:
-  demo-job:
-    runs-on: self-hosted
-    # runs-on: ubuntu-latest
+  build-and-deploy:
+    # runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     # strategy:
     #   matrix:
