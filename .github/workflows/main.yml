@@ -1,0 +1,63 @@
+name: Task Manager Backend CI/CD and Tests
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [22.x]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Print start message
+        run: echo "Build Action Started.."
+
+      - name: Run a one-line script
+        run: echo "Hello world!"
+
+      - name: Run a multi-line script
+        run: |
+          echo Add other actions to build, test, and deploy your project.
+
+      - name: List files
+        run: ls ${{ github.workspace }}
+
+      - name: Print Node context
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: echo "$GITHUB_CONTEXT"
+
+      - name: Actions Completed
+        run: echo "Build Action Completed.."
+
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [22.x]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run tests
+        run: npm test
+
+      - name: Test completion message
+        run: echo "All tests passed"
