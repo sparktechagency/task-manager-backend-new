@@ -408,24 +408,61 @@ const deleteMyAccount = async (id: string, payload: DeleteAccountPayload) => {
   return userDeleted;
 };
 
-const blockedUser = async (id: string) => {
-  const user: TUser | null = await User.IsUserExistById(id);
+// const blockedUser = async (id: string) => {
+//   const user: TUser | null = await User.IsUserExistById(id);
 
-  if (!user) {
+//   if (!user) {
+//     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
+//   }
+//   const result = await User.findByIdAndUpdate(
+//     id,
+//     { isActive: user.isActive ? false : true },
+//     { new: true },
+//   );
+
+//   if (!result) {
+//     throw new AppError(httpStatus.BAD_REQUEST, 'user deleting failed');
+//   }
+
+//   return result;
+// };
+
+
+const blockedUser = async (id: string, userId: string) => {
+  const existUser: TUser | null = await User.findById(id);
+
+  if (!existUser) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
   }
-  const result = await User.findByIdAndUpdate(
+
+  const blocker: TUser | null = await User.findById(userId);
+
+  if (!blocker) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Admin not found');
+  }
+
+  if (existUser.role === blocker.role) {
+    throw new AppError(httpStatus.FORBIDDEN, 'You cannot block this Person!!');
+  }
+  if (existUser.role === 'super_admin') {
+    throw new AppError(httpStatus.FORBIDDEN, 'You cannot block this Person!!');
+  }
+
+  const blockUnblockSwich = existUser.isActive ? false : true;
+
+  const user = await User.findByIdAndUpdate(
     id,
-    { isActive: user.isActive ? false : true },
+    { isActive: blockUnblockSwich },
     { new: true },
   );
 
-  if (!result) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'user deleting failed');
+  if (!user) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'user blocking failed');
   }
 
-  return result;
+  return user;
 };
+
 
 export const userService = {
   createUserToken,

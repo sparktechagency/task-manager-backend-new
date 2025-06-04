@@ -6,6 +6,7 @@ import { IMessages } from './message.interface';
 import Chat from '../chat/chat.model';
 import { chatService } from '../chat/chat.service';
 import QueryBuilder from '../../builder/QueryBuilder';
+import { User } from '../user/user.models';
 
 // // Add a new message
 // const addMessage = async (messageBody: any) => {
@@ -106,32 +107,104 @@ import QueryBuilder from '../../builder/QueryBuilder';
 //------------------------------------------------------//
 
 const createMessages = async (payload: IMessages) => {
-  console.log('payload===', payload);
+  // console.log('payload===', payload);
+
+  if(payload.receiver){
+    if (payload.sender.toString() === payload.receiver.toString()) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Sender and Receiver cannot be the same person. Please change.',
+      );
+    }
+    const alreadyExists = await Chat.findOne({
+      participants: { $all: [payload.sender, payload.receiver] },
+    }).populate(['participants']);
+    console.log('alreadyExists', alreadyExists);
+
+    if (!alreadyExists) {
+      const chatList = await Chat.create({
+        participants: [payload.sender, payload.receiver],
+      });
+      //@ts-ignore
+      payload.chat = chatList?._id;
+    } else {
+      //@ts-ignore
+      payload.chat = alreadyExists?._id;
+    }
+
+  }
+
+  if (payload.chat) {
+  const  chat = await Chat.findById(payload.chat);
+    if (!chat) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'Chat is not found!!');
+    }
+
+    const receiver =
+      chat &&
+      chat.participants.find(
+        (id) => id.toString() !== payload.sender.toString(),
+      );
+
+    console.log('receiver==', receiver);
+
+    if (!receiver) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'Recever is not found!!');
+    }
+    payload.receiver = receiver;
+
+    if (payload.sender.toString() === receiver._id.toString()) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Sender and Receiver cannot be the same person. Please change.',
+      );
+    }
+  }
+
+
+ 
+
+  console.log('payload khela hobe', payload);
+
+  const sender = await User.findById(payload.sender);
+  // console.log('sender==', sender);
+
+  if (!sender) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Sender is not found!!');
+  }
+  
+
+  
+ 
+
+  console.log('payload last part', payload);
+
+
+
   const alreadyExists = await Chat.findOne({
     participants: { $all: [payload.sender, payload.receiver] },
   }).populate(['participants']);
-  console.log('alreadyExists', alreadyExists);
 
   if (!alreadyExists) {
     const chatList = await Chat.create({
       participants: [payload.sender, payload.receiver],
     });
+    // console.log(' exist nah');
     //@ts-ignore
-    payload.chat = chatList?._id;
+    payload.chatId = chatList?._id;
   } else {
+    // console.log('already exist');
     //@ts-ignore
-    payload.chat = alreadyExists?._id;
+    payload.chatId = alreadyExists?._id;
   }
+
+
 
 console.log('payload==2', payload);
    const result = await(await Message.create(payload)).populate([
      {
        path: 'sender',
-       select: 'fullName email image role _id phone ',
-     },
-     {
-       path: 'receiver',
-       select: 'fullName email image role _id phone ',
+       select: 'fullName email image role _id phone'
      },
    ]);
   console.log('result', result);
@@ -154,12 +227,15 @@ console.log('payload==2', payload);
       result?.receiver._id.toString(),
     );
 
+    console.log('ChatListSender', ChatListSender);
+    console.log('ChatListReceiver', ChatListReceiver);
+
     const senderChat = 'chat-list::' + result.sender._id.toString();
     const receiverChat = 'chat-list::' + result.receiver._id.toString();
     console.log('senderChat', senderChat);
     console.log('receiverChat', receiverChat);
-    io.emit(receiverChat, ChatListSender);
-    io.emit(senderChat, ChatListReceiver);
+    io.emit(receiverChat, ChatListReceiver);
+    io.emit(senderChat, ChatListSender);
   }
 
   return result;
@@ -204,12 +280,48 @@ const updateMessages = async (id: string, payload: Partial<IMessages>) => {
 };
 
 // Get messages by chat ID
-const getMessagesByChatId = async (chatId: string) => {
+const getMessagesByChatId1 = async (chatId: string) => {
   console.log('chatId', chatId);
+  //pagination
   const result = await Message.find({ chat: chatId })
     .populate('taskId')
     .sort({ createdAt: -1 });
   return result;
+};
+
+
+const getMessagesByChatId = async (
+  query: Record<string, unknown>,
+  chatId: string,
+) => {
+  query.sort = '-createdAt';
+  const TaskPostQuery = new QueryBuilder(
+    Message.find({ chat: chatId }).populate('taskId').populate({
+      path: 'sender',
+      select: 'fullName image role',
+    }),
+    query,
+  )
+    .search([''])
+    .filter()
+    .sort()
+    .paginate()
+    .fields();
+
+  const result = await TaskPostQuery.modelQuery;
+  const sorted = result
+    .filter((item) => item.type === 'task') // ensure updatedAt exists
+    .sort(
+      (a, b) =>
+        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+    );
+
+  const lastUpdatedData = sorted[0];
+
+
+
+  const meta = await TaskPostQuery.countTotal();
+  return { meta, result, lastUpdatedData };
 };
 
 // Get message by ID

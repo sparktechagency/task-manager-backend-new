@@ -131,7 +131,8 @@ const updateMyProfile = catchAsync(async (req: Request, res: Response) => {
 });
 
 const blockedUser = catchAsync(async (req: Request, res: Response) => {
-  const result = await userService.blockedUser(req.params.id);
+  const { userId } = req.user;
+  const result = await userService.blockedUser(req.params.id, userId);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,

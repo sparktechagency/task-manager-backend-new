@@ -617,11 +617,11 @@ const deletedTaskPostQuery = async (id: string) => {
 
 
 const posterTaskAcceptedService = async (payload: any) => {
+  console.log('task accept payload', payload);
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
-    console.log('accept payload', payload);
 
     const chat = await Chat.findOne({
       participants: { $all: [payload.sender, payload.receiver] },
@@ -634,10 +634,11 @@ const posterTaskAcceptedService = async (payload: any) => {
     }
 
     const task = await TaskPost.findById(payload.taskId).session(session);
-
+ 
     if (!task) {
       throw new AppError(httpStatus.BAD_REQUEST, 'Task not found');
     }
+    console.log('sdfafafasfsafa', task);
     if (task.status !== 'accept') {
       throw new AppError(httpStatus.BAD_REQUEST, 'Task is not accepted');
     }
@@ -677,13 +678,20 @@ const posterTaskAcceptedService = async (payload: any) => {
       );
     }
 
-    const result = await Message.findOneAndUpdate(
+    const result: any = await Message.findOneAndUpdate(
       { _id: payload.messageId, chat: chat._id, taskId: payload.taskId },
       { taskStatus: 'accept' },
       { new: true, runValidators: true, session },
-    );
+    ).populate([
+      {
+        path: 'sender',
+        select: 'fullName email image role _id phone',
+      },
+    ]).populate('taskId');
 
-    if (result) {
+    console.log('first result', result);
+
+    
       const taskPost = await TaskPost.findById(payload.taskId).session(session);
       if (!taskPost) {
         throw new AppError(httpStatus.BAD_REQUEST, 'TaskPost not found');
@@ -693,20 +701,33 @@ const posterTaskAcceptedService = async (payload: any) => {
       taskPost.taskerUserId = payload.receiver;
       await taskPost.save({ session });
 
-
-          const data = {
-            userId: payload.receiver,
-            message: 'Task Accept success!!',
-            type: 'success',
-          };
-          await notificationService.createNotification(data, session);
+console.log('first taskPost', taskPost);
        
-    }
+          const updatedResult:any = await Message.findById(result._id)
+            .populate([
+              { path: 'sender', select: 'fullName email image role _id phone' },
+              { path: 'taskId' }, // This now reflects updated taskPost
+            ])
+            .session(session);
 
+            const data = {
+              userId: payload.receiver,
+              message: 'Task Accept success!!',
+              type: 'success',
+            };
+            await notificationService.createNotification(data, session);
+  
+
+            const senderMessage = 'new-message::' + updatedResult.chat?._id.toString();
+            console.log('senderMessage', senderMessage);
+
+            io.emit(senderMessage, updatedResult);
 
 
     await session.commitTransaction();
     session.endSession();
+
+   
 
     return result;
   } catch (error) {
@@ -722,8 +743,10 @@ const posterTaskCanceledService = async (payload: any) => {
     console.log('cancel payload', payload);
     const chat = await Chat.findOne({ participants: { $all: [payload.sender, payload.receiver] } }).populate(['participants']);
 
-    if(!chat){
-        throw new AppError(httpStatus.BAD_REQUEST, 'Chat not found');
+    console.log('chat participant', chat);
+
+    if (!chat || !chat._id) {
+      throw new Error('Chat object or chat._id is missing');
     }
 
     const message = await Message.findById(payload.messageId);
@@ -732,23 +755,57 @@ const posterTaskCanceledService = async (payload: any) => {
         throw new AppError(httpStatus.BAD_REQUEST, 'Message not found');
     }
 
+    const task = await TaskPost.findById(payload.taskId);
+
+    if(!task){
+        throw new AppError(httpStatus.BAD_REQUEST, 'Task not found');
+    }
+
+   
+   
+
     // console.log('chat', chat);
     console.log('message', message);
+    // console.log('chat', chat);
 
-    const alreadyCancel = await Message.findOne({
-      taskId: payload.taskId,
+    console.log('console opore==', {
+      chat: chat._id,
+      taskId: task._id,
       taskStatus: 'cencel',
     });
+
+    const alreadyCancel = await Message.findOne({
+      chat: chat._id,
+      taskId: task._id,
+      taskStatus: 'cencel',
+    });
+
+    console.log('alreadyCancel===', alreadyCancel);
 
     if (alreadyCancel) {
         throw new AppError(httpStatus.BAD_REQUEST, 'task Request already canceled!!'); 
     }
 
-    const result = await Message.findOneAndUpdate(
+    const result:any = await Message.findOneAndUpdate(
       { _id: payload.messageId, chat: chat._id, taskId: payload.taskId },
       { taskStatus: 'cencel' },
       { new: true, runValidators: true },
-    );
+    ).populate([
+      {
+        path: 'sender',
+        select: 'fullName email image role _id phone',
+      },
+    ]).populate('taskId');
+    
+    if (!result) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'Message not found or conditions do not match');
+    }
+    
+
+    const senderMessage = 'new-message::' + result.chat._id.toString();
+    console.log('senderMessage', senderMessage);
+
+    io.emit(senderMessage, result);
 
 
 
@@ -785,6 +842,10 @@ const taskPaymentRequestService = async (userId: string, taskId: string) => {
 
   if (task.status !== 'complete') {
     throw new AppError(httpStatus.BAD_REQUEST, 'Task is not completed!!');
+  }
+
+  if (task.paymentStatus === 'request') {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Task payment is already request!!');
   }
 
 

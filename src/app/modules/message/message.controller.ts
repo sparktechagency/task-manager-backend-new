@@ -40,13 +40,19 @@ const createMessages = catchAsync(async (req, res) => {
   };
  
 
-   if (updateFiles.image && updateFiles.image.length > 0) {
-     req.body.image = updateFiles.image.map((file) => {
-       return file.path.replace(/^public[\\/]/, '');
-     });
+  //  if (updateFiles.image && updateFiles.image.length > 0) {
+  //    req.body.image = updateFiles.image.map((file) => {
+  //      return file.path.replace(/^public[\\/]/, '');
+  //    });
+  //  }
+
+  console.log('body data1', req.body);
+   if (updateFiles?.image && updateFiles?.image?.length > 0) {
+     req.body.image = updateFiles?.image[0]?.path?.replace(/^public[\\/]/, '');
+
    }
 
-
+console.log('body data', req.body)
   
 
   const result = await messageService.createMessages(req.body);
@@ -72,12 +78,16 @@ const getAllMessages = catchAsync(async (req, res) => {
 
 // Get messages by chat ID
 const getMessagesByChatId = catchAsync(async (req, res) => {
-  const result = await messageService.getMessagesByChatId(req.params.chatId);
+  const result = await messageService.getMessagesByChatId(req.query,req.params.chatId);
   sendResponse(res, {
     statusCode: 200,
     success: true,
     message: 'Messages retrieved successfully',
-    data: result,
+    meta: result.meta,
+    data: {
+      task: result.lastUpdatedData || {},
+      result: result.result,
+    },
   });
 });
 

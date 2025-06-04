@@ -5,6 +5,7 @@ import { User } from '../user/user.models';
 import httpStatus from 'http-status';
 import AppError from '../../error/AppError';
 import Message from '../message/message.model';
+import QueryBuilder from '../../builder/QueryBuilder';
 
 // Create a new chat (Equivalent to `createChat` in your old code)
 // export const createChat = async (user: any, participant: any) => {
@@ -216,17 +217,70 @@ const createChat = async (payload: IChat) => {
 };
 
 // Get my chat list
-const getMyChatList = async (userId: string) => {
+const getMyChatList = async (
+  userId: string,
+  query?: Record<string, unknown>,
+) => {
   console.log('*****', userId);
-  const chats = await Chat.find({
-    participants: { $all: userId },
-  }).populate({
-    path: 'participants',
-    select: 'fullName email image role _id phone',
-    match: { _id: { $ne: userId } },
-  });
+  console.log('*****query', query);
+  // const chats = await Chat.find({
+  //   participants: { $all: userId },
+  // }).populate({
+  //   path: 'participants',
+  //   select: 'fullName email image role _id phone',
+  //   match: { _id: { $ne: userId } },
+  // });
 
-  console.log('chats==', chats);
+  // console.log('chats==*********', chats);
+
+let chats;
+  if (query && query.search && query.search !== '') {
+    
+    const searchRegExp = new RegExp('.*' + query.search + '.*', 'i');
+    const matchingUsers = await User.find({ fullName: searchRegExp }).select(
+      '_id',
+    );
+    const matchingUserIds = matchingUsers.map((u) => u._id);
+  
+    chats = await Chat.find({
+      $and: [
+        { participants: { $all: [userId] } },
+        { participants: { $in: matchingUserIds } },
+      ],
+    }).populate({
+      path: 'participants',
+      select: 'fullName email image role _id phone',
+      match: { _id: { $ne: userId } },
+    });
+  } else {
+    chats = await Chat.find({
+      participants: { $all: userId },
+    }).populate({
+      path: 'participants',
+      select: 'fullName email image role _id phone',
+      match: { _id: { $ne: userId } },
+    });
+  }
+
+  // const chatsQuery = new QueryBuilder(
+  //   Chat.find({ participants: { $all: userId } })
+  //   .populate({
+  //     path: 'participants',
+  //     select: 'fullName email image role _id phone',
+  //     match: { _id: { $ne: userId } },
+  //   }),
+  //   query || {},
+  // )
+  //   .search([''])
+  //   .filter()
+  //   .sort()
+  //   .paginate()
+  //   .fields();
+
+  // const chats = await chatsQuery.modelQuery;
+  // const meta = await chatsQuery.countTotal();
+
+ 
 
   if (!chats) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Chat list not found');
@@ -262,11 +316,12 @@ const getMyChatList = async (userId: string) => {
       seen: false,
       sender: '',
       receiver: '',
-      chatId: '',
-      taskId: '',
-      taskStatus: '',
+      chat: '',
+      taskId: null,
+      taskStatus: null,
       offerPrice: 0,
       reason: '',
+      type: '',
       createdAt: null,
       updatedAt: null,
       __v: '',

@@ -235,12 +235,19 @@ const taskerTaskAcceptRequest = catchAsync(async (req, res) => {
     sender: userId,
     receiver: bodyData.receiver,
     taskStatus: 'pending',
+    type: bodyData.type,
   };
 
   const task = await TaskPost.findById(id);
 
   if (!task) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Task not found');
+  }
+  if (task.posterUserId.toString() === userId.toString()) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'You can not send offer to your own task!!',
+    );
   }
   if (task.status !== 'accept') {
     throw new AppError(httpStatus.BAD_REQUEST, 'Task is not accepted');
@@ -254,7 +261,7 @@ const taskerTaskAcceptRequest = catchAsync(async (req, res) => {
 
   const taskRequestAlreadyCencel = await Message.findOne({
     taskId: id,
-    receiver: userId,
+    sender: userId,
     taskStatus: 'cencel',
   });
 
@@ -265,12 +272,39 @@ const taskerTaskAcceptRequest = catchAsync(async (req, res) => {
     );
   }
 
+  const taskAlreadyExist = await Message.findOne({
+    sender: userId,
+    taskId: id,
+    taskStatus: 'pending',
+  }).populate([
+    {
+      path: 'sender',
+      select: 'fullName email image role _id phone ',
+    },
+    {
+      path: 'receiver',
+      select: 'fullName email image role _id phone ',
+    },
+  ]);
+  console.log('dsfadfafafas========', taskAlreadyExist);
+
+  if (taskAlreadyExist) {
+    return sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      data: taskAlreadyExist,
+      message: 'Task Request already Created!!',
+    });
+  }
+
+  console.log('new creae why');
   const wallet = await Wallet.findOne({ userId: userId });
   if (!wallet) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Wallet not found!!');
   }
   // console.log('acceptRequestData', acceptRequestData);
   //   const result = await taskPostService.deletedTaskPostQuery(req.params.id);
+
   const result = await messageService.createMessages(acceptRequestData);
   if (result) {
     const data = {
@@ -280,6 +314,10 @@ const taskerTaskAcceptRequest = catchAsync(async (req, res) => {
     };
     await notificationService.createNotification(data);
   }
+
+  console.log('dfadlfaklfkaf;la', result);
+
+
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
@@ -298,6 +336,7 @@ const taskerTaskOfferRequest = catchAsync(async (req, res) => {
     receiver: bodyData.receiver,
     taskStatus: 'pending',
     offerPrice: Number(bodyData.offerPrice),
+    type: bodyData.type,
   };
   if (bodyData.reason) {
     acceptRequestData.reason = bodyData.reason;
@@ -305,7 +344,7 @@ const taskerTaskOfferRequest = catchAsync(async (req, res) => {
   console.log('acceptRequestData', acceptRequestData);
   const taskRequestAlreadyCencel = await Message.findOne({
     taskId: id,
-    receiver: userId,
+    sender: userId,
     taskStatus: 'cencel',
   });
 
@@ -315,9 +354,63 @@ const taskerTaskOfferRequest = catchAsync(async (req, res) => {
       'task Request already canceled!!',
     );
   }
+
+  if (bodyData.offerPrice) {
+    const taskAlreadyExist = await Message.findOne({
+      sender: userId,
+      taskId: id,
+      taskStatus: 'pending',
+    });
+    console.log('dsfadfafafas========', taskAlreadyExist);
+
+    
+
+    if (taskAlreadyExist) {
+      const updateMessage:any = await Message.findOneAndUpdate(
+        {
+          taskId: id,
+          sender: userId,
+          taskStatus: 'pending',
+        },
+        {
+          offerPrice: bodyData.offerPrice,
+          reason: bodyData.reason,
+        },
+        {
+          new: true,
+        },
+      ).populate([
+        {
+          path: 'sender', 
+          select: 'fullName email image role _id phone ',
+        }
+      ]).populate('taskId');
+      const senderMessage = 'new-message::' + updateMessage.chat.toString();
+      // console.log('senderMessage', senderMessage);
+
+      io.emit(senderMessage, updateMessage);
+      return sendResponse(res, {
+        success: true,
+        statusCode: httpStatus.OK,
+        data: updateMessage,
+        message: 'Task Request already Created!!',
+      });
+
+    }
+  }
+  
+
+
   const wallet = await Wallet.findOne({ userId: userId });
   if (!wallet) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Wallet not found!!');
+  }
+  const task = await TaskPost.findById(id);
+  if(!task){
+    throw new AppError(httpStatus.BAD_REQUEST, 'Task not found');
+  }
+  if(task.posterUserId.toString() === userId.toString()){
+    throw new AppError(httpStatus.BAD_REQUEST, 'You can not send offer to your own task!!');
   }
   //   const result = await taskPostService.deletedTaskPostQuery(req.params.id);
   const result = await messageService.createMessages(acceptRequestData);

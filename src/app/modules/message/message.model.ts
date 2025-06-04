@@ -39,13 +39,13 @@ const messageSchema = new Schema(
       type: Schema.Types.ObjectId,
       required: false,
       ref: 'TaskPost',
-      default: '',
+      default: null,
     },
     taskStatus: {
       type: String,
       enum: ['pending', 'accept', 'cencel'],
       required: false,
-      default: '',
+      default: null,
     },
     offerPrice: {
       type: Number,
@@ -56,6 +56,11 @@ const messageSchema = new Schema(
       type: String,
       required: false,
       default: '',
+    },
+    type: {
+      type: String,
+      enum: ['message', 'file', 'task'],
+      required: false,
     },
   },
   {

@@ -13,4 +13,5 @@ export interface IMessages {
   taskStatus?: string;
   offerPrice?: number;
   reason?: string;
+  type: string;
 }
