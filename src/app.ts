@@ -45,7 +45,8 @@ app.use(
 app.use('/api/v1', router);
 
 app.get('/', (req: Request, res: Response) => {
-  res.send('server is running');
+  // res.send('server is running');
+  res.render('server-running.ejs');
 });
 app.use(globalErrorHandler);
 
