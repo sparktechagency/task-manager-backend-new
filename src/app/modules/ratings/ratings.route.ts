@@ -9,8 +9,8 @@ const reviewRouter = express.Router();
 
 reviewRouter
   .post(
-    '/',
-    auth(USER_ROLE.TASKER),
+    '/create-review-rating',
+    auth(USER_ROLE.TASKER, USER_ROLE.POSTER),
     // validateRequest(videoValidation.VideoSchema),
     reviewController.createReview,
   )

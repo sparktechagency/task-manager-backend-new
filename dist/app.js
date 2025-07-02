@@ -15,6 +15,7 @@ const notfound_1 = __importDefault(require("./app/middleware/notfound"));
 const routes_1 = __importDefault(require("./app/routes"));
 const path_1 = __importDefault(require("path"));
 const payment_controller_1 = require("./app/modules/payment/payment.controller");
+const templete_1 = require("./templete/templete");
 const app = (0, express_1.default)();
 app.set('views', path_1.default.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
@@ -35,7 +36,9 @@ app.use((0, cors_1.default)({
 // application routes
 app.use('/api/v1', routes_1.default);
 app.get('/', (req, res) => {
-    res.send('server is running');
+    // res.send('server is running');
+    // res.render('server-running.ejs');
+    res.send(templete_1.serverRunningTemplete);
 });
 app.use(globalErrorhandler_1.default);
 //Not Found

@@ -42,15 +42,21 @@ const chat_service_1 = require("../chat/chat.service");
 //   });
 // });
 const createMessages = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b, _c;
     const id = `${Math.floor(100000 + Math.random() * 900000)}${Date.now()}`;
     req.body.id = id;
     req.body.sender = req.user.userId;
     const updateFiles = req.files;
-    if (updateFiles.image && updateFiles.image.length > 0) {
-        req.body.image = updateFiles.image.map((file) => {
-            return file.path.replace(/^public[\\/]/, '');
-        });
+    //  if (updateFiles.image && updateFiles.image.length > 0) {
+    //    req.body.image = updateFiles.image.map((file) => {
+    //      return file.path.replace(/^public[\\/]/, '');
+    //    });
+    //  }
+    console.log('body data1', req.body);
+    if ((updateFiles === null || updateFiles === void 0 ? void 0 : updateFiles.image) && ((_a = updateFiles === null || updateFiles === void 0 ? void 0 : updateFiles.image) === null || _a === void 0 ? void 0 : _a.length) > 0) {
+        req.body.image = (_c = (_b = updateFiles === null || updateFiles === void 0 ? void 0 : updateFiles.image[0]) === null || _b === void 0 ? void 0 : _b.path) === null || _c === void 0 ? void 0 : _c.replace(/^public[\\/]/, '');
     }
+    console.log('body data', req.body);
     const result = yield message_service_1.messageService.createMessages(req.body);
     (0, sendResponse_1.default)(res, {
         statusCode: 200,
@@ -71,12 +77,16 @@ const getAllMessages = (0, catchAsync_1.default)((req, res) => __awaiter(void 0,
 }));
 // Get messages by chat ID
 const getMessagesByChatId = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const result = yield message_service_1.messageService.getMessagesByChatId(req.params.chatId);
+    const result = yield message_service_1.messageService.getMessagesByChatId(req.query, req.params.chatId);
     (0, sendResponse_1.default)(res, {
         statusCode: 200,
         success: true,
         message: 'Messages retrieved successfully',
-        data: result,
+        meta: result.meta,
+        data: {
+            task: result.lastUpdatedData || {},
+            result: result.result,
+        },
     });
 }));
 // Get message by ID

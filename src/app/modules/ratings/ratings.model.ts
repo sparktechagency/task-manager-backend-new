@@ -3,23 +3,30 @@ import { TReview } from './ratings.interface';
 
 const reviewSchema = new Schema<TReview>(
   {
-    customerId: {
+    taskId: {
+      type: Schema.Types.ObjectId,
+      required: true,
+      ref: 'TaskPost',
+    },
+    taskerId: {
       type: Schema.Types.ObjectId,
       required: true,
       ref: 'User',
     },
-    businessId: {
+    posterId: {
       type: Schema.Types.ObjectId,
       required: true,
-      ref: 'Business',
+      ref: 'User',
     },
     rating: {
       type: Number,
       required: true,
+      default: 0,
     },
     review: {
       type: String,
-      required: true,
+      required: false,
+      default: '',
     },
   },
   { timestamps: true },

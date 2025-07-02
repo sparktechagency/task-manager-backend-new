@@ -124,7 +124,8 @@ const updateMyProfile = (0, catchAsync_1.default)((req, res) => __awaiter(void 0
     });
 }));
 const blockedUser = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const result = yield user_service_1.userService.blockedUser(req.params.id);
+    const { userId } = req.user;
+    const result = yield user_service_1.userService.blockedUser(req.params.id, userId);
     (0, sendResponse_1.default)(res, {
         statusCode: http_status_1.default.OK,
         success: true,

@@ -11,8 +11,7 @@ import { User } from '../user/user.models';
 import { notificationService } from '../notification/notification.service';
 
 const createTaskPostService = async (payload: TTaskPost) => {
-
-  const isExistWallet:any = await Wallet.findOne({
+  const isExistWallet: any = await Wallet.findOne({
     userId: payload.posterUserId,
   });
 
@@ -27,17 +26,14 @@ const createTaskPostService = async (payload: TTaskPost) => {
   // );
 
   if (isExistWallet.amount === 0 || isExistWallet.amount < payload.price) {
-    throw new AppError(
-     402,
-      'Your wallet balance is insufficient',
-    );
+    throw new AppError(402, 'Your wallet balance is insufficient');
   }
   const result = await TaskPost.create(payload);
-  if(result){
+  if (result) {
     let remainingAmount = result.price;
 
     const updateWalletAmount = await Wallet.findOneAndUpdate(
-      {userId:result.posterUserId},
+      { userId: result.posterUserId },
       { $inc: { amount: -remainingAmount } },
       { new: true },
     );
@@ -56,24 +52,19 @@ const createTaskPostService = async (payload: TTaskPost) => {
     //   }
     // }
 
-      const data = {
-        role:"admin",
-        message: 'Task created successfully! Please Accept/Reject Task',
-        type:"success",
-      };
-      await notificationService.createNotification(data);
-  
-
-
+    const data = {
+      role: 'admin',
+      message: 'Task created successfully! Please Accept/Reject Task',
+      type: 'success',
+    };
+    await notificationService.createNotification(data);
   }
   return result;
 };
 
-
-
 const getAllTaskPostQuery = async (query: Record<string, unknown>) => {
   const TaskPostQuery = new QueryBuilder(
-    TaskPost.find({ }).populate('posterUserId').populate('taskerUserId'),
+    TaskPost.find({}).populate('posterUserId').populate('taskerUserId'),
     query,
   )
     .search([''])
@@ -88,59 +79,62 @@ const getAllTaskPostQuery = async (query: Record<string, unknown>) => {
 };
 
 const getAllTaskByMapQuery = async (query: Record<string, unknown>) => {
+  const userLongitude = Number(query.userLongitude);
+  const userLatitude = Number(query.userLatitude);
+  const radiusInKilometers = 20;
 
- const userLongitude = Number(query.userLongitude);
- const userLatitude = Number(query.userLatitude);
- const radiusInKilometers = 20;
+  const tasks = await TaskPost.find({
+    status: 'accept',
+    location: {
+      $geoWithin: {
+        $centerSphere: [
+          [userLongitude, userLatitude],
+          radiusInKilometers / 6378.1,
+        ],
+      },
+    },
+  });
 
- const tasks = await TaskPost.find({
-   status: 'accept',
-   location: {
-     $geoWithin: {
-       $centerSphere: [
-         [userLongitude, userLatitude], 
-         radiusInKilometers / 6378.1,
-       ],
-     },
-   },
- });
-
- return tasks;
+  return tasks;
 };
-
 
 const getAllTaskOverviewQuery = async (query: Record<string, unknown>) => {
- const totalTask = await TaskPost.find({status: 'accept'}).countDocuments();
- const totalOngoingTask = await TaskPost.find({ status: 'ongoing' }).countDocuments();
- const tasker = await User.find({role: 'tasker'}).countDocuments();
- const poster = await User.find({role: 'poster'}).countDocuments();
- const result = {
-  totalTask,
-  tasker,
-  poster,
-  totalOngoingTask
- }
+  const totalTask = await TaskPost.find({ status: 'accept' }).countDocuments();
+  const totalOngoingTask = await TaskPost.find({
+    status: 'ongoing',
+  }).countDocuments();
+  const tasker = await User.find({ role: 'tasker' }).countDocuments();
+  const poster = await User.find({ role: 'poster' }).countDocuments();
+  const result = {
+    totalTask,
+    tasker,
+    poster,
+    totalOngoingTask,
+  };
 
   return result;
 };
 
-const getAllTaskPendingCompleteCancelQuery = async (query: Record<string, unknown>) => {
- const totalPendingTask = await TaskPost.find({ status: 'ongoing' }).countDocuments();
- const totalOngoingTask = await TaskPost.find({
-   status: 'cancel',
- }).countDocuments();
- const totalCompleteTask = await TaskPost.find({
-   status: 'complete',
- }).countDocuments();
- const result = {
-   totalPendingTask,
-   totalOngoingTask,
-   totalCompleteTask,
- };
+const getAllTaskPendingCompleteCancelQuery = async (
+  query: Record<string, unknown>,
+) => {
+  const totalPendingTask = await TaskPost.find({
+    status: 'ongoing',
+  }).countDocuments();
+  const totalOngoingTask = await TaskPost.find({
+    status: 'cancel',
+  }).countDocuments();
+  const totalCompleteTask = await TaskPost.find({
+    status: 'complete',
+  }).countDocuments();
+  const result = {
+    totalPendingTask,
+    totalOngoingTask,
+    totalCompleteTask,
+  };
 
   return result;
 };
-
 
 const getAllTaskOverviewByPosterQuery = async (
   query: Record<string, unknown>,
@@ -166,39 +160,64 @@ const getAllTaskOverviewByPosterQuery = async (
   };
 };
 
-
 const getAllTaskOverviewByTaskerPosterQuery = async (
   query: Record<string, unknown>,
   userId: string,
 ) => {
-
   const user = await User.findById(userId);
-  if(!user){
+  if (!user) {
     throw new AppError(404, 'User not found');
   }
   const updateUserId = user.role === 'tasker' ? 'taskerUserId' : 'posterUserId';
 
-  const tasksOngoing = await TaskPost.find({
-    [updateUserId]: userId,
-    status: ['ongoing', 'accept'],
-  }).countDocuments();
-  const tasksComplete = await TaskPost.find({
-    [updateUserId]: userId,
-    status: 'complete',
-  }).countDocuments();
-  const tasksCancel = await TaskPost.find({
-    [updateUserId]: userId,
-    status: 'cancel',
-  }).countDocuments();
+  if(user.role === 'poster'){
+    const tasksOngoing = await TaskPost.find({
+      [updateUserId]: userId,
+      status: ['ongoing', 'accept'],
+    }).countDocuments();
+    const tasksComplete = await TaskPost.find({
+      [updateUserId]: userId,
+      status: 'complete',
+    }).countDocuments();
+    const tasksCancel = await TaskPost.find({
+      [updateUserId]: userId,
+      status: 'cancel',
+    }).countDocuments();
 
-  return {
-    tasksOngoing,
-    tasksComplete,
-    tasksCancel,
-  };
+    return {
+      tasksOngoing,
+      tasksComplete,
+      tasksCancel,
+    };
+
+  }else{
+    const tasksOngoing = await TaskPost.find({
+      [updateUserId]: userId,
+      status: ['ongoing', 'accept'],
+    }).countDocuments();
+    const tasksComplete = await TaskPost.find({
+      [updateUserId]: userId,
+      status: 'complete',
+    }).countDocuments();
+    console.log('userId', userId);
+    const tasksCancel = await Message.find({
+      sender: userId,
+      taskStatus: 'cencel',
+    }).countDocuments();
+    console.log('tasksCancel', tasksCancel);
+   
+    return {
+      tasksOngoing,
+      tasksComplete,
+      tasksCancel,
+    };
+
+  }
+
+ 
+
+  
 };
-
-
 
 const getAllCompleteIncomeTaskOverviewChartByTaskerQuery = async (
   query: Record<string, unknown>,
@@ -239,7 +258,7 @@ const getAllCompleteIncomeTaskOverviewChartByTaskerQuery = async (
 
     result = allDays.map((day) => ({
       day,
-      task: taskCountByDay[day] || 0, 
+      task: taskCountByDay[day] || 0,
     }));
   }
   // else if (query.status === 'monthly') {
@@ -282,11 +301,8 @@ const getAllCompleteIncomeTaskOverviewChartByTaskerQuery = async (
   //       task: taskCountByMonth[month] || 0,
   //     }));
   //   }
-    
+
   // }
-
-
-
   else if (query.startDate && query.endDate) {
     const startDateRaw = query.startDate;
     const endDateRaw = query.endDate;
@@ -321,7 +337,6 @@ const getAllCompleteIncomeTaskOverviewChartByTaskerQuery = async (
       day: task.updatedAt,
       task: 1,
     }));
- 
   } else {
     const currentDate = new Date();
     const sevenDaysAgo = new Date(currentDate);
@@ -364,15 +379,10 @@ const getAllCompleteIncomeTaskOverviewChartByTaskerQuery = async (
   return result;
 };
 
-
-
-
-
-
 const getAllTaskPostByFilterQuery = async (query: Record<string, unknown>) => {
   console.log('filter query data', query);
 
-  let newQuery:any = {};
+  let newQuery: any = {};
 
   if (
     query.minPrice &&
@@ -399,76 +409,71 @@ const getAllTaskPostByFilterQuery = async (query: Record<string, unknown>) => {
 
   // this is sort by price, post date, due date
   // This is the sorting logic for price, postDate, and dueDate
-//    const sortObject: any = {};
-//   if (
-//     query.price &&
-//     query.postDate &&
-//     query.dueDate &&
-//     query.price !== '' &&
-//     query.postDate !== '' &&
-//     query.dueDate !== '' &&
-//     query.price !== null &&
-//     query.postDate !== null &&
-//     query.dueDate !== null
-//   ) {
-//     console.log('sort hit hoise');
+  //    const sortObject: any = {};
+  //   if (
+  //     query.price &&
+  //     query.postDate &&
+  //     query.dueDate &&
+  //     query.price !== '' &&
+  //     query.postDate !== '' &&
+  //     query.dueDate !== '' &&
+  //     query.price !== null &&
+  //     query.postDate !== null &&
+  //     query.dueDate !== null
+  //   ) {
+  //     console.log('sort hit hoise');
 
-   
+  //     // Sorting by price
+  //     if (query.price === 'high') {
+  //       sortObject.price = -1;
+  //     } else if (query.price === 'low') {
+  //       sortObject.price = 1;
+  //     }
 
-//     // Sorting by price
-//     if (query.price === 'high') {
-//       sortObject.price = -1; 
-//     } else if (query.price === 'low') {
-//       sortObject.price = 1; 
-//     }
+  //     // Sorting by postDate
+  //     if (query.postDate === 'high') {
+  //       sortObject.postDate = -1;
+  //     } else if (query.postDate === 'low') {
+  //       sortObject.postDate = 1;
+  //     }
 
-//     // Sorting by postDate
-//     if (query.postDate === 'high') {
-//       sortObject.postDate = -1; 
-//     } else if (query.postDate === 'low') {
-//       sortObject.postDate = 1; 
-//     }
+  //     // Sorting by dueDate
+  //     if (query.dueDate === 'high') {
+  //       sortObject.dueDate = -1;
+  //     } else if (query.dueDate === 'low') {
+  //       sortObject.dueDate = 1;
+  //     }
 
-//     // Sorting by dueDate
-//     if (query.dueDate === 'high') {
-//       sortObject.dueDate = -1; 
-//     } else if (query.dueDate === 'low') {
-//       sortObject.dueDate = 1; 
-//     }
+  //   }
 
-//   }
+  const sortArray = [];
 
-   const sortArray = [];
+  if (query.price) {
+    sortArray.push(`price ${query.price === 'high' ? -1 : 1}`);
+  }
 
-if (query.price) {
-  sortArray.push(`price ${query.price === 'high' ? -1 : 1}`); 
-}
+  if (query.postDate) {
+    sortArray.push(`createdAt ${query.postDate === 'high' ? -1 : 1}`);
+  }
 
-if (query.postDate) {
-  sortArray.push(`createdAt ${query.postDate === 'high' ? -1 : 1}`); 
-}
+  if (query.dueDate) {
+    sortArray.push(`dueDate ${query.dueDate === 'high' ? -1 : 1}`);
+  }
 
-if (query.dueDate) {
-  sortArray.push(`dueDate ${query.dueDate === 'high' ? -1 : 1}`); 
-}
+  // Default sorting logic if no sort options are provided
+  const sortString = sortArray.length > 0 ? sortArray.join(',') : '-createdAt';
+  // console.log('sortString:', sortString);
+  delete query.price;
+  delete query.postDate;
+  delete query.dueDate;
+  // newQuery.sort = sortString;
+  newQuery = { ...query, sort: sortString };
 
-// Default sorting logic if no sort options are provided
-const sortString = sortArray.length > 0 ? sortArray.join(',') : '-createdAt';
-// console.log('sortString:', sortString);
-delete query.price;
-delete query.postDate;
-delete query.dueDate;
-// newQuery.sort = sortString;
-newQuery = { ...query, sort: sortString };
-
-
-
-
-console.log('newQuery ===', newQuery);
-//  "sort": "price high,postDate low,dueDate high"
+  console.log('newQuery ===', newQuery);
+  //  "sort": "price high,postDate low,dueDate high"
 
   // sort query data
-//   console.log('sortObject', sortObject);
+  //   console.log('sortObject', sortObject);
 
   const TaskPostQuery = new QueryBuilder(TaskPost.find({}), newQuery)
     .search(['taskName', 'taskDetails', 'category'])
@@ -487,10 +492,9 @@ const getAllTaskByTaskerPosterQuery = async (
   query: Record<string, unknown>,
   posterTaskerUserId: string,
 ) => {
-
   console.log('posterTaskerUserId', posterTaskerUserId);
   const user = await User.findById(posterTaskerUserId);
-  if(!user){
+  if (!user) {
     throw new AppError(404, 'User not found');
   }
 
@@ -518,6 +522,52 @@ const getAllTaskByTaskerPosterQuery = async (
   return { meta, result };
 };
 
+
+const getAllCancleTaskByTaskerQuery = async (
+  query: Record<string, unknown>,
+  taskerUserId: string,
+) => {
+
+  const page = Number(query?.page) || 1;
+  const limit = Number(query?.limit) || 10;
+  const skip = (page - 1) * limit;
+
+  // console.log('taskerUserId', taskerUserId);
+  const user = await User.findById(taskerUserId);
+  if (!user) {
+    throw new AppError(404, 'User not found');
+  }
+
+  const allCancelTask = await Message.find({
+    sender: taskerUserId,
+    taskStatus: 'cencel',
+  })
+    .populate('taskId')
+    .skip(skip)
+    .limit(limit);
+  // console.log('allCancelTask', allCancelTask);
+
+  const taskIds = allCancelTask.map((task) => task.taskId);
+  // console.log('taskIds', taskIds);
+
+  const count = await Message.countDocuments({
+    sender: taskerUserId,
+    taskStatus: 'cencel',
+  });
+
+  const meta = {
+    page,
+    limit,
+    total: count,
+    totalPage: Math.ceil(count / limit),
+  }
+  return { meta, result: taskIds };
+
+
+
+ 
+};
+
 // const getAllTaskByTaskerQuery = async (
 //   query: Record<string, unknown>,
 //   taskerUserId: string,
@@ -540,39 +590,39 @@ const getAllTaskByTaskerPosterQuery = async (
 // };
 
 const getSingleTaskPostQuery = async (id: string) => {
-  const taskPost = await TaskPost.findById(id).populate('posterUserId').populate('taskerUserId');
+  const taskPost = await TaskPost.findById(id)
+    .populate('posterUserId')
+    .populate('taskerUserId');
   if (!taskPost) {
     throw new AppError(404, 'TaskPost Not Found!!');
   }
-//   const result = await TaskPost.aggregate([
-//     { $match: { _id: new mongoose.Types.ObjectId(id) } },
-//     {
-//         $lookup:{
-//             from:"users",
-//             localField:"posterUserId",
-//             foreignField:"_id",
-//             as:"posterUser"
-//         }
-//     }
-//   ]);
-//   if (result.length === 0) {
-//     throw new AppError(404, 'TaskPost not found!');
-//   }
+  //   const result = await TaskPost.aggregate([
+  //     { $match: { _id: new mongoose.Types.ObjectId(id) } },
+  //     {
+  //         $lookup:{
+  //             from:"users",
+  //             localField:"posterUserId",
+  //             foreignField:"_id",
+  //             as:"posterUser"
+  //         }
+  //     }
+  //   ]);
+  //   if (result.length === 0) {
+  //     throw new AppError(404, 'TaskPost not found!');
+  //   }
 
-//   return result[0];
-return taskPost;
+  //   return result[0];
+  return taskPost;
 };
 
-const taskAcceptByAdminQuery = async (
-  id: string,
-) => {
-  if (!id ) {
+const taskAcceptByAdminQuery = async (id: string) => {
+  if (!id) {
     throw new AppError(400, 'Invalid id parameters');
   }
 
   const result = await TaskPost.findByIdAndUpdate(
-   id,
-    {status:"accept"},
+    id,
+    { status: 'accept' },
     { new: true, runValidators: true },
   );
 
@@ -582,9 +632,7 @@ const taskAcceptByAdminQuery = async (
   return result;
 };
 
-const taskCancelByAdminQuery = async (
-  id: string
-) => {
+const taskCancelByAdminQuery = async (id: string) => {
   if (!id) {
     throw new AppError(400, 'Invalid id parameters');
   }
@@ -607,14 +655,11 @@ const deletedTaskPostQuery = async (id: string) => {
     throw new AppError(httpStatus.BAD_REQUEST, 'TaskPost not found');
   }
   return result;
-  
 };
 
 //---------------------------------------------------------------------------//
 
 //---------------------------------------------------------------------------//
-
-
 
 const posterTaskAcceptedService = async (payload: any) => {
   console.log('task accept payload', payload);
@@ -622,19 +667,21 @@ const posterTaskAcceptedService = async (payload: any) => {
   session.startTransaction();
 
   try {
+    const chat = await Chat.findById(payload.chatId).session(session);
 
-    const chat = await Chat.findOne({
-      participants: { $all: [payload.sender, payload.receiver] },
-    })
-      .populate(['participants'])
-      .session(session);
+    const messageExist:any = await Message.findById(payload.messageId).session(
+      session,
+    );
 
     if (!chat) {
       throw new AppError(httpStatus.BAD_REQUEST, 'Chat not found');
     }
+    if (!messageExist) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'Message not found');
+    }
 
     const task = await TaskPost.findById(payload.taskId).session(session);
- 
+
     if (!task) {
       throw new AppError(httpStatus.BAD_REQUEST, 'Task not found');
     }
@@ -643,18 +690,24 @@ const posterTaskAcceptedService = async (payload: any) => {
       throw new AppError(httpStatus.BAD_REQUEST, 'Task is not accepted');
     }
     if (['ongoing', 'complete', 'cancel'].includes(task.status)) {
-      throw new AppError(httpStatus.BAD_REQUEST, `Task is not valid! because task status is ${task.status}`);
-    }
-
-    const message = await Message.findById(payload.messageId).session(session);
-
-    if (!message) {
-      throw new AppError(httpStatus.BAD_REQUEST, 'Message not found');
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        `Task is not valid! because task status is ${task.status}`,
+      );
     }
 
     const alreadyAccept = await Message.findOne({
+      _id: payload.messageId,
       taskId: payload.taskId,
+      chat: chat._id,
       taskStatus: 'accept',
+    }).session(session);
+
+    const alreadyCancel = await Message.findOne({
+      _id: payload.messageId,
+      taskId: payload.taskId,
+      chat: chat._id,
+      taskStatus: 'cencel',
     }).session(session);
 
     console.log('alreadyAccept', alreadyAccept);
@@ -665,12 +718,6 @@ const posterTaskAcceptedService = async (payload: any) => {
         'Task Request already accepted!!',
       );
     }
-
-    const alreadyCancel = await Message.findOne({
-      taskId: payload.taskId,
-      taskStatus: 'cancel',
-    }).session(session);
-
     if (alreadyCancel) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
@@ -682,54 +729,62 @@ const posterTaskAcceptedService = async (payload: any) => {
       { _id: payload.messageId, chat: chat._id, taskId: payload.taskId },
       { taskStatus: 'accept' },
       { new: true, runValidators: true, session },
-    ).populate([
-      {
-        path: 'sender',
-        select: 'fullName email image role _id phone',
-      },
-    ]).populate('taskId');
+    )
+      .populate([
+        {
+          path: 'sender',
+          select: 'fullName email image role _id phone',
+        },
+      ])
+      .populate('taskId');
 
     console.log('first result', result);
 
-    
-      const taskPost = await TaskPost.findById(payload.taskId).session(session);
-      if (!taskPost) {
-        throw new AppError(httpStatus.BAD_REQUEST, 'TaskPost not found');
-      }
+    task.status = 'ongoing';
+    task.taskerUserId = result.sender;
+    task.price = messageExist.offerPrice > 0 ? messageExist.offerPrice : task.price;
+    await task.save({ session });
 
-      taskPost.status = 'ongoing';
-      taskPost.taskerUserId = payload.receiver;
-      await taskPost.save({ session });
+    console.log('first taskPost', task);
 
-console.log('first taskPost', taskPost);
-       
-          const updatedResult:any = await Message.findById(result._id)
-            .populate([
-              { path: 'sender', select: 'fullName email image role _id phone' },
-              { path: 'taskId' }, // This now reflects updated taskPost
-            ])
-            .session(session);
+    const allMessageUpdate = await Message.updateMany(
+      {
+        taskId: task._id,
+        taskStatus: 'pending',
+      },
+      {
+        $set: {
+          taskStatus: 'cancel',
+        },
+      },
+      {
+        session,
+      },
+    );
 
-            const data = {
-              userId: payload.receiver,
-              message: 'Task Accept success!!',
-              type: 'success',
-            };
-            await notificationService.createNotification(data, session);
-  
+    const updatedResult: any = await Message.findById(result._id)
+      .populate([
+        { path: 'sender', select: 'fullName email image role _id phone' },
+        { path: 'taskId' }, // This now reflects updated taskPost
+      ])
+      .session(session);
 
-            const senderMessage = 'new-message::' + updatedResult.chat?._id.toString();
-            console.log('senderMessage', senderMessage);
+    const data = {
+      userId: payload.receiver,
+      message: 'Task Accept success!!',
+      type: 'success',
+    };
+    await notificationService.createNotification(data, session);
 
-            io.emit(senderMessage, updatedResult);
+    const senderMessage = 'new-message::' + updatedResult.chat?._id.toString();
+    console.log('senderMessage', senderMessage);
 
+    io.emit(senderMessage, updatedResult);
 
     await session.commitTransaction();
     session.endSession();
 
-   
-
-    return result;
+    return task;
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
@@ -739,79 +794,88 @@ console.log('first taskPost', taskPost);
 
 
 
-const posterTaskCanceledService = async (payload: any) => {
-    console.log('cancel payload', payload);
-    const chat = await Chat.findOne({ participants: { $all: [payload.sender, payload.receiver] } }).populate(['participants']);
+const posterTaskerTaskCanceledService = async (payload: any) => {
+  console.log('cancel payload', payload);
+  const chat = await Chat.findById(payload.chatId);
 
-    console.log('chat participant', chat);
+  const messageExist = await Message.findById(payload.messageId);
 
-    if (!chat || !chat._id) {
-      throw new Error('Chat object or chat._id is missing');
-    }
+  if (!chat) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Chat not found');
+  }
+  if (!messageExist) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Message not found');
+  }
 
-    const message = await Message.findById(payload.messageId);
+  const task = await TaskPost.findById(payload.taskId);
 
-    if(!message){
-        throw new AppError(httpStatus.BAD_REQUEST, 'Message not found');
-    }
+  if (!task) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Task not found');
+  }
 
-    const task = await TaskPost.findById(payload.taskId);
+  // console.log('chat', chat);
+  // console.log('chat', chat);
 
-    if(!task){
-        throw new AppError(httpStatus.BAD_REQUEST, 'Task not found');
-    }
+  console.log('console opore==', {
+    chat: chat._id,
+    taskId: task._id,
+    taskStatus: 'cencel',
+  });
 
-   
-   
+  const alreadyCancel = await Message.findOne({
+    _id: payload.messageId,
+    taskId: payload.taskId,
+    chat: chat._id,
+    taskStatus: 'cencel',
+  });
 
-    // console.log('chat', chat);
-    console.log('message', message);
-    // console.log('chat', chat);
+  const alreadyAccept = await Message.findOne({
+    _id: payload.messageId,
+    taskId: payload.taskId,
+    chat: chat._id,
+    taskStatus: 'accept',
+  });
 
-    console.log('console opore==', {
-      chat: chat._id,
-      taskId: task._id,
-      taskStatus: 'cencel',
-    });
+  console.log('alreadyCancel===', alreadyCancel);
 
-    const alreadyCancel = await Message.findOne({
-      chat: chat._id,
-      taskId: task._id,
-      taskStatus: 'cencel',
-    });
+  if (alreadyCancel) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'task Request already canceled!!',
+    );
+  }
 
-    console.log('alreadyCancel===', alreadyCancel);
+  if (alreadyAccept) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'task Request already Accept!!');
+  }
 
-    if (alreadyCancel) {
-        throw new AppError(httpStatus.BAD_REQUEST, 'task Request already canceled!!'); 
-    }
-
-    const result:any = await Message.findOneAndUpdate(
-      { _id: payload.messageId, chat: chat._id, taskId: payload.taskId },
-      { taskStatus: 'cencel' },
-      { new: true, runValidators: true },
-    ).populate([
+  const result: any = await Message.findOneAndUpdate(
+    { _id: payload.messageId, chat: chat._id, taskId: payload.taskId },
+    { taskStatus: 'cencel' },
+    { new: true, runValidators: true },
+  )
+    .populate([
       {
         path: 'sender',
         select: 'fullName email image role _id phone',
       },
-    ]).populate('taskId');
-    
-    if (!result) {
-      throw new AppError(httpStatus.BAD_REQUEST, 'Message not found or conditions do not match');
-    }
-    
+    ])
+    .populate('taskId');
 
-    const senderMessage = 'new-message::' + result.chat._id.toString();
-    console.log('senderMessage', senderMessage);
+  if (!result) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Message not found or conditions do not match',
+    );
+  }
 
-    io.emit(senderMessage, result);
+  const senderMessage = 'new-message::' + result.chat._id.toString();
+  console.log('senderMessage', senderMessage);
 
-
+  io.emit(senderMessage, result);
 
   return result;
 };
-
 
 const taskCompleteService = async (userId: string, taskId: string) => {
   const task = await TaskPost.findOne({ _id: taskId, taskerUserId: userId });
@@ -832,7 +896,6 @@ const taskCompleteService = async (userId: string, taskId: string) => {
   return result;
 };
 
-
 const taskPaymentRequestService = async (userId: string, taskId: string) => {
   const task = await TaskPost.findOne({ _id: taskId, taskerUserId: userId });
 
@@ -840,15 +903,16 @@ const taskPaymentRequestService = async (userId: string, taskId: string) => {
     throw new AppError(httpStatus.BAD_REQUEST, 'Task not found!!');
   }
 
-  if (task.status !== 'complete') {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Task is not completed!!');
-  }
+  // if (task.status !== 'complete') {
+  //   throw new AppError(httpStatus.BAD_REQUEST, 'Task is not completed!!');
+  // }
 
   if (task.paymentStatus === 'request') {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Task payment is already request!!');
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Task payment is already request!!',
+    );
   }
-
-
 
   const result = await TaskPost.findOneAndUpdate(
     { _id: taskId, taskerUserId: userId },
@@ -858,29 +922,36 @@ const taskPaymentRequestService = async (userId: string, taskId: string) => {
   return result;
 };
 
-
 const taskPaymentConfirmService = async (
   posterId: string,
   taskId: string,
-  taskerId: string,
 ) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
+    const taskerId = await TaskPost.findOne({
+      _id: taskId,
+      posterUserId: posterId,
+    })
+
+    if(!taskerId){
+      throw new AppError(httpStatus.BAD_REQUEST, 'Tasker not found!!');
+
+    }
     const task = await TaskPost.findOne({
       _id: taskId,
-      taskerUserId: taskerId,
+      taskerUserId: taskerId.taskerUserId,
       posterUserId: posterId,
     }).session(session);
 
     if (!task) {
-      throw new AppError(httpStatus.BAD_REQUEST, 'Task not found!!');
+      throw new AppError(httpStatus.BAD_REQUEST, 'you are not tasker!!');
     }
 
-    if (task.status !== 'complete') {
-      throw new AppError(httpStatus.BAD_REQUEST, 'Task is not completed!!');
-    }
+    // if (task.status !== 'complete') {
+    //   throw new AppError(httpStatus.BAD_REQUEST, 'Task is not completed!!');
+    // }
 
     if (task.paymentStatus !== 'request') {
       throw new AppError(
@@ -890,13 +961,17 @@ const taskPaymentConfirmService = async (
     }
 
     const result = await TaskPost.findOneAndUpdate(
-      { _id: taskId, taskerUserId: taskerId, posterUserId: posterId },
-      { paymentStatus: 'paid' },
+      {
+        _id: taskId,
+        taskerUserId: taskerId.taskerUserId,
+        posterUserId: posterId,
+      },
+      { paymentStatus: 'paid', status: 'complete' },
       { new: true, session },
-    );
+    ).populate('posterUserId').populate('taskerUserId');
 
     const wallet = await Wallet.findOne({
-      userId: taskerId,
+      userId: taskerId.taskerUserId,
       // role: 'tasker',
     }).session(session);
     if (!wallet) {
@@ -904,7 +979,7 @@ const taskPaymentConfirmService = async (
     }
 
     const walletAmountAdd = await Wallet.findOneAndUpdate(
-      { userId: taskerId},
+      { userId: taskerId.taskerUserId },
       { $inc: { amount: task.price } },
       { new: true, session },
     );
@@ -924,7 +999,6 @@ const taskPaymentConfirmService = async (
   }
 };
 
-
 const taskReviewConfirmService = async (
   userId: string,
   taskId: string,
@@ -934,14 +1008,13 @@ const taskReviewConfirmService = async (
   session.startTransaction();
 
   try {
-
     const user = await User.findById(userId).session(session);
     if (!user) {
       throw new AppError(httpStatus.BAD_REQUEST, 'User not found!!');
     }
 
-    const updateUserId = user.role === 'tasker' ? 'taskerUserId' : 'posterUserId';
-
+    const updateUserId =
+      user.role === 'tasker' ? 'taskerUserId' : 'posterUserId';
 
     const task = await TaskPost.findOne({
       _id: taskId,
@@ -959,13 +1032,17 @@ const taskReviewConfirmService = async (
     if (task.paymentStatus !== 'paid') {
       throw new AppError(httpStatus.BAD_REQUEST, 'Task payment is not paid!!');
     }
-    if (task.ratingStatus === 'complete' && task.taskerratingStatus === 'complete') {
-      throw new AppError(httpStatus.BAD_REQUEST, 'Task review is already completed!!');
+    if (
+      task.ratingStatus === 'complete' &&
+      task.taskerratingStatus === 'complete'
+    ) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Task review is already completed!!',
+      );
     }
 
-    if(user.role === 'tasker'){
-
-
+    if (user.role === 'tasker') {
       const taskReviewAlreadyGiven = await TaskPost.findOne({
         taskId: taskId,
         taskerUserId: user?._id,
@@ -978,8 +1055,6 @@ const taskReviewConfirmService = async (
           'Task review is already given!!',
         );
       }
-
-
 
       const result = await TaskPost.findOneAndUpdate(
         {
@@ -1019,8 +1094,7 @@ const taskReviewConfirmService = async (
       session.endSession();
 
       return taskerUpdate;
-    }else{
-
+    } else {
       const taskReviewAlreadyGiven = await TaskPost.findOne({
         taskId: taskId,
         taskerUserId: user?._id,
@@ -1070,14 +1144,8 @@ const taskReviewConfirmService = async (
       await session.commitTransaction();
       session.endSession();
 
-      return taskerUpdate
-
+      return taskerUpdate;
     }
-
-
-    
-
-    
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
@@ -1097,12 +1165,13 @@ export const taskPostService = {
   getAllTaskOverviewByPosterQuery,
   getAllTaskPostByFilterQuery,
   getAllTaskByTaskerPosterQuery,
+  getAllCancleTaskByTaskerQuery,
   taskAcceptByAdminQuery,
   taskCancelByAdminQuery,
   getSingleTaskPostQuery,
   deletedTaskPostQuery,
   posterTaskAcceptedService,
-  posterTaskCanceledService,
+  posterTaskerTaskCanceledService,
   taskPaymentRequestService,
   taskPaymentConfirmService,
   taskReviewConfirmService,

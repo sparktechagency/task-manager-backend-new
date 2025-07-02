@@ -205,16 +205,58 @@ const createChat = (payload) => __awaiter(void 0, void 0, void 0, function* () {
     }
 });
 // Get my chat list
-const getMyChatList = (userId) => __awaiter(void 0, void 0, void 0, function* () {
+const getMyChatList = (userId, query) => __awaiter(void 0, void 0, void 0, function* () {
     console.log('*****', userId);
-    const chats = yield chat_model_1.default.find({
-        participants: { $all: userId },
-    }).populate({
-        path: 'participants',
-        select: 'fullName email image role _id phone',
-        match: { _id: { $ne: userId } },
-    });
-    console.log('chats==', chats);
+    console.log('*****query', query);
+    // const chats = await Chat.find({
+    //   participants: { $all: userId },
+    // }).populate({
+    //   path: 'participants',
+    //   select: 'fullName email image role _id phone',
+    //   match: { _id: { $ne: userId } },
+    // });
+    // console.log('chats==*********', chats);
+    let chats;
+    if (query && query.search && query.search !== '') {
+        const searchRegExp = new RegExp('.*' + query.search + '.*', 'i');
+        const matchingUsers = yield user_models_1.User.find({ fullName: searchRegExp }).select('_id');
+        const matchingUserIds = matchingUsers.map((u) => u._id);
+        chats = yield chat_model_1.default.find({
+            $and: [
+                { participants: { $all: [userId] } },
+                { participants: { $in: matchingUserIds } },
+            ],
+        }).populate({
+            path: 'participants',
+            select: 'fullName email image role _id phone',
+            match: { _id: { $ne: userId } },
+        });
+    }
+    else {
+        chats = yield chat_model_1.default.find({
+            participants: { $all: userId },
+        }).populate({
+            path: 'participants',
+            select: 'fullName email image role _id phone',
+            match: { _id: { $ne: userId } },
+        });
+    }
+    // const chatsQuery = new QueryBuilder(
+    //   Chat.find({ participants: { $all: userId } })
+    //   .populate({
+    //     path: 'participants',
+    //     select: 'fullName email image role _id phone',
+    //     match: { _id: { $ne: userId } },
+    //   }),
+    //   query || {},
+    // )
+    //   .search([''])
+    //   .filter()
+    //   .sort()
+    //   .paginate()
+    //   .fields();
+    // const chats = await chatsQuery.modelQuery;
+    // const meta = await chatsQuery.countTotal();
     if (!chats) {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Chat list not found');
     }
@@ -243,11 +285,12 @@ const getMyChatList = (userId) => __awaiter(void 0, void 0, void 0, function* ()
             seen: false,
             sender: '',
             receiver: '',
-            chatId: '',
-            taskId: '',
-            taskStatus: '',
+            chat: '',
+            taskId: null,
+            taskStatus: null,
             offerPrice: 0,
             reason: '',
+            type: '',
             createdAt: null,
             updatedAt: null,
             __v: '',

@@ -6,10 +6,10 @@ import { reviewService } from './ratings.service';
 const createReview = catchAsync(async (req, res) => {
   const reviewData = req.body;
   const { userId } = req.user;
-  // console.log({ userId });
-  reviewData.customerId = userId;
+  // // console.log({ userId });
+  // reviewData.posterId = userId;
 
-  const result = await reviewService.createReviewService(reviewData);
+  const result = await reviewService.createReviewService(reviewData, userId);
 
   // Send response
   sendResponse(res, {

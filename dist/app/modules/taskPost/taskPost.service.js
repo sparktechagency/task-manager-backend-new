@@ -55,9 +55,9 @@ const createTaskPostService = (payload) => __awaiter(void 0, void 0, void 0, fun
         //   }
         // }
         const data = {
-            role: "admin",
+            role: 'admin',
             message: 'Task created successfully! Please Accept/Reject Task',
-            type: "success",
+            type: 'success',
         };
         yield notification_service_1.notificationService.createNotification(data);
     }
@@ -93,19 +93,23 @@ const getAllTaskByMapQuery = (query) => __awaiter(void 0, void 0, void 0, functi
 });
 const getAllTaskOverviewQuery = (query) => __awaiter(void 0, void 0, void 0, function* () {
     const totalTask = yield taskPost_model_1.default.find({ status: 'accept' }).countDocuments();
-    const totalOngoingTask = yield taskPost_model_1.default.find({ status: 'ongoing' }).countDocuments();
+    const totalOngoingTask = yield taskPost_model_1.default.find({
+        status: 'ongoing',
+    }).countDocuments();
     const tasker = yield user_models_1.User.find({ role: 'tasker' }).countDocuments();
     const poster = yield user_models_1.User.find({ role: 'poster' }).countDocuments();
     const result = {
         totalTask,
         tasker,
         poster,
-        totalOngoingTask
+        totalOngoingTask,
     };
     return result;
 });
 const getAllTaskPendingCompleteCancelQuery = (query) => __awaiter(void 0, void 0, void 0, function* () {
-    const totalPendingTask = yield taskPost_model_1.default.find({ status: 'ongoing' }).countDocuments();
+    const totalPendingTask = yield taskPost_model_1.default.find({
+        status: 'ongoing',
+    }).countDocuments();
     const totalOngoingTask = yield taskPost_model_1.default.find({
         status: 'cancel',
     }).countDocuments();
@@ -326,21 +330,21 @@ const getAllTaskPostByFilterQuery = (query) => __awaiter(void 0, void 0, void 0,
     //     console.log('sort hit hoise');
     //     // Sorting by price
     //     if (query.price === 'high') {
-    //       sortObject.price = -1; 
+    //       sortObject.price = -1;
     //     } else if (query.price === 'low') {
-    //       sortObject.price = 1; 
+    //       sortObject.price = 1;
     //     }
     //     // Sorting by postDate
     //     if (query.postDate === 'high') {
-    //       sortObject.postDate = -1; 
+    //       sortObject.postDate = -1;
     //     } else if (query.postDate === 'low') {
-    //       sortObject.postDate = 1; 
+    //       sortObject.postDate = 1;
     //     }
     //     // Sorting by dueDate
     //     if (query.dueDate === 'high') {
-    //       sortObject.dueDate = -1; 
+    //       sortObject.dueDate = -1;
     //     } else if (query.dueDate === 'low') {
-    //       sortObject.dueDate = 1; 
+    //       sortObject.dueDate = 1;
     //     }
     //   }
     const sortArray = [];
@@ -419,7 +423,9 @@ const getAllTaskByTaskerPosterQuery = (query, posterTaskerUserId) => __awaiter(v
 //   return { meta, result };
 // };
 const getSingleTaskPostQuery = (id) => __awaiter(void 0, void 0, void 0, function* () {
-    const taskPost = yield taskPost_model_1.default.findById(id).populate('posterUserId').populate('taskerUserId');
+    const taskPost = yield taskPost_model_1.default.findById(id)
+        .populate('posterUserId')
+        .populate('taskerUserId');
     if (!taskPost) {
         throw new AppError_1.default(404, 'TaskPost Not Found!!');
     }
@@ -444,7 +450,7 @@ const taskAcceptByAdminQuery = (id) => __awaiter(void 0, void 0, void 0, functio
     if (!id) {
         throw new AppError_1.default(400, 'Invalid id parameters');
     }
-    const result = yield taskPost_model_1.default.findByIdAndUpdate(id, { status: "accept" }, { new: true, runValidators: true });
+    const result = yield taskPost_model_1.default.findByIdAndUpdate(id, { status: 'accept' }, { new: true, runValidators: true });
     if (!result) {
         throw new AppError_1.default(404, 'Task accept not found!!');
     }
@@ -470,63 +476,87 @@ const deletedTaskPostQuery = (id) => __awaiter(void 0, void 0, void 0, function*
 //---------------------------------------------------------------------------//
 //---------------------------------------------------------------------------//
 const posterTaskAcceptedService = (payload) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    console.log('task accept payload', payload);
     const session = yield mongoose_1.default.startSession();
     session.startTransaction();
     try {
-        console.log('accept payload', payload);
-        const chat = yield chat_model_1.default.findOne({
-            participants: { $all: [payload.sender, payload.receiver] },
-        })
-            .populate(['participants'])
-            .session(session);
+        const chat = yield chat_model_1.default.findById(payload.chatId).session(session);
+        const messageExist = yield message_model_1.default.findById(payload.messageId).session(session);
         if (!chat) {
             throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Chat not found');
+        }
+        if (!messageExist) {
+            throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Message not found');
         }
         const task = yield taskPost_model_1.default.findById(payload.taskId).session(session);
         if (!task) {
             throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Task not found');
         }
+        console.log('sdfafafasfsafa', task);
         if (task.status !== 'accept') {
             throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Task is not accepted');
         }
         if (['ongoing', 'complete', 'cancel'].includes(task.status)) {
             throw new AppError_1.default(http_status_1.default.BAD_REQUEST, `Task is not valid! because task status is ${task.status}`);
         }
-        const message = yield message_model_1.default.findById(payload.messageId).session(session);
-        if (!message) {
-            throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Message not found');
-        }
         const alreadyAccept = yield message_model_1.default.findOne({
+            _id: payload.messageId,
             taskId: payload.taskId,
+            chat: chat._id,
             taskStatus: 'accept',
+        }).session(session);
+        const alreadyCancel = yield message_model_1.default.findOne({
+            _id: payload.messageId,
+            taskId: payload.taskId,
+            chat: chat._id,
+            taskStatus: 'cencel',
         }).session(session);
         console.log('alreadyAccept', alreadyAccept);
         if (alreadyAccept) {
             throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Task Request already accepted!!');
         }
-        const alreadyCancel = yield message_model_1.default.findOne({
-            taskId: payload.taskId,
-            taskStatus: 'cancel',
-        }).session(session);
         if (alreadyCancel) {
             throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Task Request already canceled!!');
         }
-        const result = yield message_model_1.default.findOneAndUpdate({ _id: payload.messageId, chat: chat._id, taskId: payload.taskId }, { taskStatus: 'accept' }, { new: true, runValidators: true, session });
-        if (result) {
-            const taskPost = yield taskPost_model_1.default.findById(payload.taskId).session(session);
-            if (!taskPost) {
-                throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'TaskPost not found');
-            }
-            taskPost.status = 'ongoing';
-            taskPost.taskerUserId = payload.receiver;
-            yield taskPost.save({ session });
-            const data = {
-                userId: payload.receiver,
-                message: 'Task Accept success!!',
-                type: 'success',
-            };
-            yield notification_service_1.notificationService.createNotification(data, session);
-        }
+        const result = yield message_model_1.default.findOneAndUpdate({ _id: payload.messageId, chat: chat._id, taskId: payload.taskId }, { taskStatus: 'accept' }, { new: true, runValidators: true, session })
+            .populate([
+            {
+                path: 'sender',
+                select: 'fullName email image role _id phone',
+            },
+        ])
+            .populate('taskId');
+        console.log('first result', result);
+        task.status = 'ongoing';
+        task.taskerUserId = result.sender;
+        yield task.save({ session });
+        console.log('first taskPost', task);
+        const allMessageUpdate = yield message_model_1.default.updateMany({
+            taskId: task._id,
+            taskStatus: 'pending',
+        }, {
+            $set: {
+                taskStatus: 'cancel',
+            },
+        }, {
+            session,
+        });
+        const updatedResult = yield message_model_1.default.findById(result._id)
+            .populate([
+            { path: 'sender', select: 'fullName email image role _id phone' },
+            { path: 'taskId' }, // This now reflects updated taskPost
+        ])
+            .session(session);
+        const data = {
+            userId: payload.receiver,
+            message: 'Task Accept success!!',
+            type: 'success',
+        };
+        yield notification_service_1.notificationService.createNotification(data, session);
+        const senderMessage = 'new-message::' + ((_a = updatedResult.chat) === null || _a === void 0 ? void 0 : _a._id.toString());
+        console.log('senderMessage', senderMessage);
+        io.emit(senderMessage, updatedResult);
         yield session.commitTransaction();
         session.endSession();
         return result;
@@ -539,24 +569,58 @@ const posterTaskAcceptedService = (payload) => __awaiter(void 0, void 0, void 0,
 });
 const posterTaskCanceledService = (payload) => __awaiter(void 0, void 0, void 0, function* () {
     console.log('cancel payload', payload);
-    const chat = yield chat_model_1.default.findOne({ participants: { $all: [payload.sender, payload.receiver] } }).populate(['participants']);
+    const chat = yield chat_model_1.default.findById(payload.chatId);
+    const messageExist = yield message_model_1.default.findById(payload.messageId);
     if (!chat) {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Chat not found');
     }
-    const message = yield message_model_1.default.findById(payload.messageId);
-    if (!message) {
+    if (!messageExist) {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Message not found');
     }
+    const task = yield taskPost_model_1.default.findById(payload.taskId);
+    if (!task) {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Task not found');
+    }
     // console.log('chat', chat);
-    console.log('message', message);
-    const alreadyCancel = yield message_model_1.default.findOne({
-        taskId: payload.taskId,
+    // console.log('chat', chat);
+    console.log('console opore==', {
+        chat: chat._id,
+        taskId: task._id,
         taskStatus: 'cencel',
     });
+    const alreadyCancel = yield message_model_1.default.findOne({
+        _id: payload.messageId,
+        taskId: payload.taskId,
+        chat: chat._id,
+        taskStatus: 'cencel',
+    });
+    const alreadyAccept = yield message_model_1.default.findOne({
+        _id: payload.messageId,
+        taskId: payload.taskId,
+        chat: chat._id,
+        taskStatus: 'accept',
+    });
+    console.log('alreadyCancel===', alreadyCancel);
     if (alreadyCancel) {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'task Request already canceled!!');
     }
-    const result = yield message_model_1.default.findOneAndUpdate({ _id: payload.messageId, chat: chat._id, taskId: payload.taskId }, { taskStatus: 'cencel' }, { new: true, runValidators: true });
+    if (alreadyAccept) {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'task Request already Accept!!');
+    }
+    const result = yield message_model_1.default.findOneAndUpdate({ _id: payload.messageId, chat: chat._id, taskId: payload.taskId }, { taskStatus: 'cencel' }, { new: true, runValidators: true })
+        .populate([
+        {
+            path: 'sender',
+            select: 'fullName email image role _id phone',
+        },
+    ])
+        .populate('taskId');
+    if (!result) {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Message not found or conditions do not match');
+    }
+    const senderMessage = 'new-message::' + result.chat._id.toString();
+    console.log('senderMessage', senderMessage);
+    io.emit(senderMessage, result);
     return result;
 });
 const taskCompleteService = (userId, taskId) => __awaiter(void 0, void 0, void 0, function* () {
@@ -577,6 +641,9 @@ const taskPaymentRequestService = (userId, taskId) => __awaiter(void 0, void 0, 
     }
     if (task.status !== 'complete') {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Task is not completed!!');
+    }
+    if (task.paymentStatus === 'request') {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Task payment is already request!!');
     }
     const result = yield taskPost_model_1.default.findOneAndUpdate({ _id: taskId, taskerUserId: userId }, { paymentStatus: 'request' }, { new: true });
     return result;
@@ -643,7 +710,8 @@ const taskReviewConfirmService = (userId, taskId, bodyData) => __awaiter(void 0,
         if (task.paymentStatus !== 'paid') {
             throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Task payment is not paid!!');
         }
-        if (task.ratingStatus === 'complete' && task.taskerratingStatus === 'complete') {
+        if (task.ratingStatus === 'complete' &&
+            task.taskerratingStatus === 'complete') {
             throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Task review is already completed!!');
         }
         if (user.role === 'tasker') {

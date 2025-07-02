@@ -193,10 +193,14 @@ const taskerTaskAcceptRequest = (0, catchAsync_1.default)((req, res) => __awaite
         sender: userId,
         receiver: bodyData.receiver,
         taskStatus: 'pending',
+        type: bodyData.type,
     };
     const task = yield taskPost_model_1.default.findById(id);
     if (!task) {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Task not found');
+    }
+    if (task.posterUserId.toString() === userId.toString()) {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'You can not send offer to your own task!!');
     }
     if (task.status !== 'accept') {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Task is not accepted');
@@ -206,12 +210,36 @@ const taskerTaskAcceptRequest = (0, catchAsync_1.default)((req, res) => __awaite
     }
     const taskRequestAlreadyCencel = yield message_model_1.default.findOne({
         taskId: id,
-        receiver: userId,
+        sender: userId,
         taskStatus: 'cencel',
     });
     if (taskRequestAlreadyCencel) {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'task Request already canceled!!');
     }
+    const taskAlreadyExist = yield message_model_1.default.findOne({
+        sender: userId,
+        taskId: id,
+        taskStatus: 'pending',
+    }).populate([
+        {
+            path: 'sender',
+            select: 'fullName email image role _id phone ',
+        },
+        {
+            path: 'receiver',
+            select: 'fullName email image role _id phone ',
+        },
+    ]);
+    console.log('dsfadfafafas========', taskAlreadyExist);
+    if (taskAlreadyExist) {
+        return (0, sendResponse_1.default)(res, {
+            success: true,
+            statusCode: http_status_1.default.OK,
+            data: taskAlreadyExist,
+            message: 'Task Request already Created!!',
+        });
+    }
+    console.log('new creae why');
     const wallet = yield wallet_model_1.Wallet.findOne({ userId: userId });
     if (!wallet) {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Wallet not found!!');
@@ -227,6 +255,7 @@ const taskerTaskAcceptRequest = (0, catchAsync_1.default)((req, res) => __awaite
         };
         yield notification_service_1.notificationService.createNotification(data);
     }
+    console.log('dfadlfaklfkaf;la', result);
     (0, sendResponse_1.default)(res, {
         success: true,
         statusCode: http_status_1.default.OK,
@@ -244,6 +273,7 @@ const taskerTaskOfferRequest = (0, catchAsync_1.default)((req, res) => __awaiter
         receiver: bodyData.receiver,
         taskStatus: 'pending',
         offerPrice: Number(bodyData.offerPrice),
+        type: bodyData.type,
     };
     if (bodyData.reason) {
         acceptRequestData.reason = bodyData.reason;
@@ -251,15 +281,97 @@ const taskerTaskOfferRequest = (0, catchAsync_1.default)((req, res) => __awaiter
     console.log('acceptRequestData', acceptRequestData);
     const taskRequestAlreadyCencel = yield message_model_1.default.findOne({
         taskId: id,
-        receiver: userId,
+        sender: userId,
         taskStatus: 'cencel',
+    });
+    const taskRequestAlreadyAccept = yield message_model_1.default.findOne({
+        taskId: id,
+        sender: userId,
+        taskStatus: 'accept',
     });
     if (taskRequestAlreadyCencel) {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'task Request already canceled!!');
     }
+    if (taskRequestAlreadyAccept) {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'task Request already accepted`!!');
+    }
+    // if (bodyData.offerPrice) {
+    //   const taskAlreadyExist = await Message.findOne({
+    //     sender: userId,
+    //     taskId: id,
+    //     taskStatus: 'pending',
+    //   });
+    //   console.log('dsfadfafafas========', taskAlreadyExist);
+    //   if (taskAlreadyExist) {
+    //     const updateMessage:any = await Message.findOneAndUpdate(
+    //       {
+    //         taskId: id,
+    //         sender: userId,
+    //         taskStatus: 'pending',
+    //       },
+    //       {
+    //         offerPrice: bodyData.offerPrice,
+    //         reason: bodyData.reason,
+    //       },
+    //       {
+    //         new: true,
+    //       },
+    //     ).populate([
+    //       {
+    //         path: 'sender', 
+    //         select: 'fullName email image role _id phone ',
+    //       }
+    //     ]).populate('taskId');
+    //     const senderMessage = 'new-message::' + updateMessage.chat.toString();
+    //     // console.log('senderMessage', senderMessage);
+    //     io.emit(senderMessage, updateMessage);
+    //     return sendResponse(res, {
+    //       success: true,
+    //       statusCode: httpStatus.OK,
+    //       data: updateMessage,
+    //       message: 'Task Request already Created!!',
+    //     });
+    //   }
+    // }
+    const taskAlreadyExist = yield message_model_1.default.findOne({
+        sender: userId,
+        taskId: id,
+        taskStatus: 'pending',
+    }).populate([
+        {
+            path: 'sender',
+            select: 'fullName email image role _id phone ',
+        },
+        {
+            path: 'receiver',
+            select: 'fullName email image role _id phone ',
+        },
+    ]);
+    console.log('dsfadfafafas========', taskAlreadyExist);
+    if (taskAlreadyExist) {
+        return (0, sendResponse_1.default)(res, {
+            success: true,
+            statusCode: http_status_1.default.OK,
+            data: taskAlreadyExist,
+            message: 'Task offer Request already Created!!',
+        });
+    }
     const wallet = yield wallet_model_1.Wallet.findOne({ userId: userId });
     if (!wallet) {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Wallet not found!!');
+    }
+    const task = yield taskPost_model_1.default.findById(id);
+    if (!task) {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Task not found');
+    }
+    if (task.status !== 'accept') {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Task is not accepted');
+    }
+    if (['ongoing', 'complete', 'cancel'].includes(task.status)) {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, `Task is not valid! because task status is ${task.status}`);
+    }
+    if (task.posterUserId.toString() === userId.toString()) {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'You can not send offer to your own task!!');
     }
     //   const result = await taskPostService.deletedTaskPostQuery(req.params.id);
     const result = yield message_service_1.messageService.createMessages(acceptRequestData);
@@ -277,6 +389,99 @@ const taskerTaskOfferRequest = (0, catchAsync_1.default)((req, res) => __awaiter
         data: result,
         message: 'Task Accept Request Successfully!!',
     });
+}));
+const taskOfferPriceAdjust = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { id } = req.params;
+    console.log('id', id);
+    const bodyData = req.body;
+    if (!bodyData.offerPrice) {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Offer price is required');
+    }
+    if (bodyData.offerPrice < 0) {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Offer price must be greater than 0');
+    }
+    const acceptRequestData = {
+        taskId: id,
+        offerPrice: Number(bodyData.offerPrice),
+    };
+    if (bodyData.reason) {
+        acceptRequestData.reason = bodyData.reason;
+    }
+    console.log('acceptRequestData', acceptRequestData);
+    const taskExsit = yield taskPost_model_1.default.findById(id);
+    if (!taskExsit) {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Task not found');
+    }
+    if (['ongoing', 'complete', 'cancel'].includes(taskExsit.status)) {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, `Task is not valid! because task status is ${taskExsit.status}`);
+    }
+    if (taskExsit.status !== 'accept') {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Task is not accepted');
+    }
+    console.log('acceptRequestData', acceptRequestData);
+    const taskRequestAlreadyCencel = yield message_model_1.default.findOne({
+        _id: bodyData.messageId,
+        taskId: id,
+        taskStatus: 'cencel',
+    });
+    const taskRequestAlreadyAccepted = yield message_model_1.default.findOne({
+        _id: bodyData.messageId,
+        taskId: id,
+        taskStatus: 'accept'
+    });
+    if (taskRequestAlreadyCencel) {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'task Request already canceled!!');
+    }
+    if (taskRequestAlreadyAccepted) {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'task Request already accepted`!!');
+    }
+    const notValidUserForThisMessage = yield message_model_1.default.findOne({
+        _id: bodyData.messageId,
+        taskId: id,
+    });
+    if (!notValidUserForThisMessage) {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Message not found');
+    }
+    if (notValidUserForThisMessage.sender.toString() !== req.user.userId.toString() && notValidUserForThisMessage.receiver.toString() !== req.user.userId.toString()) {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'You are not valid user for this message');
+    }
+    const taskAlreadyExist = yield message_model_1.default.findOne({
+        _id: bodyData.messageId,
+        taskId: id,
+        taskStatus: 'pending',
+    });
+    console.log('dsfadfafafas========', taskAlreadyExist);
+    if (taskAlreadyExist) {
+        const updateMessage = yield message_model_1.default.findOneAndUpdate({
+            _id: bodyData.messageId,
+            taskId: id,
+            taskStatus: 'pending',
+        }, {
+            offerPrice: bodyData.offerPrice,
+            reason: bodyData.reason,
+        }, {
+            new: true,
+        })
+            .populate([
+            {
+                path: 'sender',
+                select: 'fullName email image role _id phone ',
+            },
+        ])
+            .populate('taskId');
+        const senderMessage = 'new-message::' + updateMessage.chat.toString();
+        // console.log('senderMessage', senderMessage);
+        io.emit(senderMessage, updateMessage);
+        return (0, sendResponse_1.default)(res, {
+            success: true,
+            statusCode: http_status_1.default.OK,
+            data: updateMessage,
+            message: 'Task Request already Created!!',
+        });
+    }
+    else {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Task Request not found!!');
+    }
 }));
 const posterAgainTaskOfferRequest = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
@@ -300,12 +505,10 @@ const posterAgainTaskOfferRequest = (0, catchAsync_1.default)((req, res) => __aw
 }));
 const posterTaskAccepted = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
-    const { userId } = req.user;
+    // const { userId } = req.user;
     const bodyData = req.body;
     const acceptRequestData = {
         taskId: id,
-        sender: userId,
-        receiver: bodyData.receiver,
         chatId: bodyData.chatId,
         messageId: bodyData.messageId,
     };
@@ -321,12 +524,10 @@ const posterTaskAccepted = (0, catchAsync_1.default)((req, res) => __awaiter(voi
 }));
 const posterTaskCanceled = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
-    const { userId } = req.user;
+    // const { userId } = req.user;
     const bodyData = req.body;
     const cancelRequestData = {
         taskId: id,
-        sender: userId,
-        receiver: bodyData.receiver,
         chatId: bodyData.chatId,
         messageId: bodyData.messageId,
     };
@@ -416,4 +617,5 @@ exports.taskPostController = {
     taskPaymentRequest,
     taskPaymentConfirm,
     taskReviewConfirm,
+    taskOfferPriceAdjust,
 };

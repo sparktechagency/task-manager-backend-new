@@ -46,6 +46,11 @@ taskRouter
     auth(USER_ROLE.POSTER, USER_ROLE.TASKER),
     taskPostController.getAllTaskByTaskerPoster,
   )
+  .get(
+    '/tasker-cancel-task',
+    auth(USER_ROLE.TASKER),
+    taskPostController.getAllCancelTaskByTasker,
+  )
   // .get('/tasker', auth(USER_ROLE.TASKER), taskPostController.getAllTaskByTasker)
   .get('/:id', taskPostController.getSingleTaskPost)
   .patch(
@@ -75,6 +80,11 @@ taskRouter
     taskPostController.taskerTaskOfferRequest,
   )
   .patch(
+    '/tasker-offer-adjust/:id',
+    auth(USER_ROLE.TASKER, USER_ROLE.POSTER),
+    taskPostController.taskOfferPriceAdjust,
+  )
+  .patch(
     '/poster-again-offer-request/:id',
     auth(USER_ROLE.POSTER),
     taskPostController.posterAgainTaskOfferRequest,
@@ -86,8 +96,8 @@ taskRouter
   )
   .patch(
     '/poster-canceled/:id',
-    auth(USER_ROLE.POSTER),
-    taskPostController.posterTaskCanceled,
+    auth(USER_ROLE.POSTER, USER_ROLE.TASKER),
+    taskPostController.posterTaskerTaskCanceled,
   )
   .patch(
     '/task-complete/:id',

@@ -325,16 +325,42 @@ const deleteMyAccount = (id, payload) => __awaiter(void 0, void 0, void 0, funct
     }
     return userDeleted;
 });
-const blockedUser = (id) => __awaiter(void 0, void 0, void 0, function* () {
-    const user = yield user_models_1.User.IsUserExistById(id);
-    if (!user) {
+// const blockedUser = async (id: string) => {
+//   const user: TUser | null = await User.IsUserExistById(id);
+//   if (!user) {
+//     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
+//   }
+//   const result = await User.findByIdAndUpdate(
+//     id,
+//     { isActive: user.isActive ? false : true },
+//     { new: true },
+//   );
+//   if (!result) {
+//     throw new AppError(httpStatus.BAD_REQUEST, 'user deleting failed');
+//   }
+//   return result;
+// };
+const blockedUser = (id, userId) => __awaiter(void 0, void 0, void 0, function* () {
+    const existUser = yield user_models_1.User.findById(id);
+    if (!existUser) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, 'User not found');
     }
-    const result = yield user_models_1.User.findByIdAndUpdate(id, { isActive: user.isActive ? false : true }, { new: true });
-    if (!result) {
-        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'user deleting failed');
+    const blocker = yield user_models_1.User.findById(userId);
+    if (!blocker) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, 'Admin not found');
     }
-    return result;
+    if (existUser.role === blocker.role) {
+        throw new AppError_1.default(http_status_1.default.FORBIDDEN, 'You cannot block this Person!!');
+    }
+    if (existUser.role === 'super_admin') {
+        throw new AppError_1.default(http_status_1.default.FORBIDDEN, 'You cannot block this Person!!');
+    }
+    const blockUnblockSwich = existUser.isActive ? false : true;
+    const user = yield user_models_1.User.findByIdAndUpdate(id, { isActive: blockUnblockSwich }, { new: true });
+    if (!user) {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'user blocking failed');
+    }
+    return user;
 });
 exports.userService = {
     createUserToken,

@@ -69,8 +69,9 @@ const createChat = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, voi
     });
 }));
 const getMyChatList = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const query = req.query;
     const userId = req.user.userId;
-    const result = yield chat_service_1.chatService.getMyChatList(userId);
+    const result = yield chat_service_1.chatService.getMyChatList(userId, query);
     (0, sendResponse_1.default)(res, {
         statusCode: 200,
         success: true,

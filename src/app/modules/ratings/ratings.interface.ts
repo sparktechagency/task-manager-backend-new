@@ -1,8 +1,9 @@
 import { Types } from 'mongoose';
 
 export type TReview = {
-  customerId: Types.ObjectId;
-  businessId: Types.ObjectId;
+  taskId: Types.ObjectId;
+  taskerId: Types.ObjectId;
+  posterId: Types.ObjectId;
   rating: number;
-  review: string;
+  review?: string;
 };
