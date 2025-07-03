@@ -54,7 +54,7 @@ services:
   application:
     build:
       context: .
-      dockerfile: ./docker/Dockerfile
+      dockerfile: ./Docker/Dockerfile
     container_name: application
     hostname: application
     env_file:
@@ -79,7 +79,7 @@ services:
   application2:
     build:
       context: .
-      dockerfile: ./docker/Dockerfile
+      dockerfile: ./Docker/Dockerfile
     container_name: application2F
     hostname: application2
     env_file:
@@ -104,7 +104,7 @@ services:
   application3:
     build:
       context: .
-      dockerfile: ./docker/Dockerfile
+      dockerfile: ./Docker/Dockerfile
     container_name: application3
     hostname: application3
     env_file:
