@@ -1,10 +1,9 @@
 services:
-
   mongo:
     container_name: mongo
     image: mongo
     env_file:
-      - .env 
+      - .env
     environment:
       - MONGO_INITDB_ROOT_USERNAME=${MONGODB_ADMINUSERNAME}
       - MONGO_INITDB_ROOT_PASSWORD=${MONGODB_ADMINPASSWORD}
@@ -12,31 +11,31 @@ services:
     volumes:
       - shared-data:/shared
     ports:
-      - "${MONGODB_PORT}:27017"
+      - '${MONGODB_PORT}:27017'
     networks:
       - server-net
     deploy:
       resources:
         limits:
-          cpus: '0.5'       # half CPU core
-          memory: 512M      # 512 MB RAM
+          cpus: '0.5' # half CPU core
+          memory: 512M # 512 MB RAM
         reservations:
-          cpus: '0.25'      # minimum CPU reserved
-          memory: 256M      # minimum memory reserved
+          cpus: '0.25' # minimum CPU reserved
+          memory: 256M # minimum memory reserved
 
   nginx:
-    build: 
+    build:
       context: .
       dockerfile: ./Docker/Dockerfile.nginx
     container_name: nginx
     environment:
-    - PORT1=1111
-    - PORT2=2222
-    - PORT3=3333
+      - PORT1=1111
+      - PORT2=2222
+      - PORT3=3333
     volumes:
       - shared-data:/shared
     ports:
-      - "80:80"
+      - '80:80'
     depends_on:
       - application
       - application2
@@ -46,47 +45,24 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'       # half CPU core
-          memory: 512M      # 512 MB RAM
+          cpus: '0.5' # half CPU core
+          memory: 512M # 512 MB RAM
         reservations:
-          cpus: '0.25'      # minimum CPU reserved
-          memory: 256M      # minimum memory reserved
+          cpus: '0.25' # minimum CPU reserved
+          memory: 256M # minimum memory reserved
 
   application:
     build:
       context: .
-      dockerfile: ./Docker/Dockerfile
-    container_name: task-manager-backend-application
+      dockerfile: ./docker/Dockerfile
+    container_name: application
+    hostname: application
     env_file:
       - .env
     volumes:
       - shared-data:/shared
     ports:
-      - "80:${PORT}"
-    networks:
-      - server-net
-    depends_on:
-      - mongo
-    deploy:
-      resources:
-        limits:
-          cpus: '1.5'
-          memory: 3584M 
-        reservations:
-          cpus: '0.25'
-          memory: 256M 
-
-  application2:
-    build:
-      context: .
-      dockerfile: ./Docker/Dockerfile
-    container_name: application2
-    env_file:
-      - .env
-    volumes:
-      - shared-data:/shared
-    ports:
-      - "2222:${PORT}"
+      - '1111:${PORT}'
     networks:
       - server-net
     depends_on:
@@ -95,22 +71,23 @@ services:
       resources:
         limits:
           cpus: '0.5'
-          memory: 512M   
+          memory: 512M
         reservations:
-          cpus: '0.25'  
-          memory: 256M 
+          cpus: '0.25'
+          memory: 256M
 
-  application3:
+  application2:
     build:
       context: .
-      dockerfile: ./Docker/Dockerfile
-    container_name: application3
+      dockerfile: ./docker/Dockerfile
+    container_name: application2F
+    hostname: application2
     env_file:
       - .env
     volumes:
       - shared-data:/shared
     ports:
-      - "3333:${PORT}"
+      - '2222:${PORT}'
     networks:
       - server-net
     depends_on:
@@ -118,11 +95,36 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5' 
+          cpus: '0.5'
           memory: 512M
         reservations:
-          cpus: '0.25' 
-          memory: 256M 
+          cpus: '0.25'
+          memory: 256M
+
+  application3:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile
+    container_name: application3
+    hostname: application3
+    env_file:
+      - .env
+    volumes:
+      - shared-data:/shared
+    ports:
+      - '3333:${PORT}'
+    networks:
+      - server-net
+    depends_on:
+      - mongo
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
 
 networks:
   server-net:
