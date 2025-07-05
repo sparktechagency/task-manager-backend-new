@@ -7,6 +7,7 @@ const superAdminData = {
   fullName: 'Super Admin',
   email: config.super_admin.email,
   password: config.super_admin.password,
+  phone: '1234567890',
   role: 'super_admin',
 };
 
