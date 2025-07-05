@@ -9,7 +9,7 @@ const user_constants_1 = require("../user/user.constants");
 const ratings_controller_1 = require("./ratings.controller");
 const reviewRouter = express_1.default.Router();
 reviewRouter
-    .post('/', (0, auth_1.default)(user_constants_1.USER_ROLE.TASKER), 
+    .post('/create-review-rating', (0, auth_1.default)(user_constants_1.USER_ROLE.TASKER, user_constants_1.USER_ROLE.POSTER), 
 // validateRequest(videoValidation.VideoSchema),
 ratings_controller_1.reviewController.createReview)
     .get('/', ratings_controller_1.reviewController.getReviewByCustomer)

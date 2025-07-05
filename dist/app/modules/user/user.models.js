@@ -20,7 +20,7 @@ const user_constants_1 = require("./user.constants");
 const userSchema = new mongoose_1.Schema({
     image: {
         type: String,
-        default: '/uploads/profile/default-user.jpg',
+        default: 'uploads/profile/default-user.jpg',
     },
     fullName: {
         type: String,

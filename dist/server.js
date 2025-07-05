@@ -19,6 +19,7 @@ const socketio_1 = __importDefault(require("./socketio"));
 const socket_io_1 = require("socket.io");
 const colors_1 = __importDefault(require("colors"));
 const config_1 = __importDefault(require("./app/config"));
+const DB_1 = require("./app/DB");
 let server;
 const socketServer = (0, http_1.createServer)();
 const io = new socket_io_1.Server(socketServer, {
@@ -56,7 +57,11 @@ function main() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             // Connect to MongoDB
-            yield mongoose_1.default.connect(config_1.default.database_url);
+            // await mongoose.connect(config.database_url as string);
+            // await mongoose.connect(
+            //   `mongodb://${config.database_user_name}:${config.databse_user_password}@mongo:${config.database_port}/${config.database_name}?authSource=admin`,
+            // );
+            yield mongoose_1.default.connect(`mongodb://localhost:27017/taskflyapp`);
             // Create a single HTTP server from the Express app
             server = (0, http_1.createServer)(app_1.default);
             // Attach Socket.IO to the same HTTP server
@@ -69,7 +74,8 @@ function main() {
             server.listen(Number(config_1.default.port), () => {
                 console.log(colors_1.default.green(`Server (HTTP + Socket.IO) is running on ${config_1.default.ip}:${config_1.default.port}`).bold);
             });
-            // Initialize your Socket.IO handlers
+            yield (0, DB_1.createSuperAdmin)();
+            // Initialize your Socket.IO handlerssu
             (0, socketio_1.default)(io);
             // Optionally make the socket server globally accessible
             global.io = io;

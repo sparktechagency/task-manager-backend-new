@@ -14,61 +14,95 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.reviewService = void 0;
 const AppError_1 = __importDefault(require("../../error/AppError"));
+const http_status_1 = __importDefault(require("http-status"));
 const mongoose_1 = __importDefault(require("mongoose"));
 const QueryBuilder_1 = __importDefault(require("../../builder/QueryBuilder"));
+const user_models_1 = require("../user/user.models");
 const ratings_model_1 = require("./ratings.model");
+const taskPost_model_1 = __importDefault(require("../taskPost/taskPost.model"));
 // import Business from '../business/business.model';
-const createReviewService = (payload) => __awaiter(void 0, void 0, void 0, function* () {
-    // try {
-    //   // console.log('Payload:', payload);
-    //   const customer = await User.findById(payload.customerId);
-    //   if (!customer) {
-    //     throw new AppError(httpStatus.NOT_FOUND, 'User not found!');
-    //   }
-    //   const business = await Business.findById(payload.businessId);
-    //   if (!business) {
-    //     throw new AppError(httpStatus.NOT_FOUND, 'Business not found!');
-    //   }
-    //   // console.log({ business });
-    //   const result = await Review.create(payload);
-    //   if (!result) {
-    //     throw new AppError(
-    //       httpStatus.BAD_REQUEST,
-    //       'Failed to add Business review!',
-    //     );
-    //   }
-    //   // console.log({ result });
-    //   let { reviewCount, ratings } = business;
-    //   // console.log({ ratings });
-    //   // console.log({ reviewCount });
-    //   const newRating =
-    //     (ratings * reviewCount + result.rating) / (reviewCount + 1);
-    //   // console.log({ newRating });
-    //   const updatedRegistration = await Business.findByIdAndUpdate(
-    //     business._id,
-    //     {
-    //       reviewCount: reviewCount + 1,
-    //       ratings: newRating,
-    //     },
-    //     { new: true },
-    //   );
-    //   if (!updatedRegistration) {
-    //     throw new AppError(
-    //       httpStatus.INTERNAL_SERVER_ERROR,
-    //       'Failed to update Business Ratings!',
-    //     );
-    //   }
-    //   return result;
-    // } catch (error) {
-    //   console.error('Error creating review:', error);
-    //   if (error instanceof AppError) {
-    //     throw error;
-    //   }
-    //   throw new AppError(
-    //     httpStatus.INTERNAL_SERVER_ERROR,
-    //     'An unexpected error occurred while creating the review.',
-    //   );
-    // }
+const createReviewService = (payload, userId) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        if (!payload.taskId) {
+            throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Task ID is required!');
+        }
+        const user = yield user_models_1.User.findById(userId);
+        if (!user) {
+            throw new AppError_1.default(http_status_1.default.NOT_FOUND, 'User not found!');
+        }
+        const task = yield taskPost_model_1.default.findById(payload.taskId);
+        if (!task) {
+            throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Task not found!');
+        }
+        if (task.status !== 'complete') {
+            throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Task is not completed!');
+        }
+        if (user.role === 'tasker') {
+            if (task.taskerratingStatus === 'complete') {
+                throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Poster is already rated!');
+            }
+            const reviewData = {
+                taskerId: user._id,
+                posterId: task.posterUserId,
+                taskId: task._id,
+                rating: payload.rating,
+            };
+            const result = yield ratings_model_1.Review.create(reviewData);
+            const poster = yield user_models_1.User.findById(task.posterUserId);
+            if (!poster) {
+                throw new AppError_1.default(http_status_1.default.NOT_FOUND, 'Poster not found!');
+            }
+            let { reviews, rating } = poster;
+            const newRating = (rating * reviews + result.rating) / (reviews + 1);
+            const updatedRegistration = yield user_models_1.User.findByIdAndUpdate(result.posterId, {
+                reviews: reviews + 1,
+                rating: newRating,
+            }, { new: true });
+            const taskUpdate = yield taskPost_model_1.default.findByIdAndUpdate(task._id, {
+                taskerratingStatus: 'complete',
+            }, { new: true });
+            if (!updatedRegistration) {
+                throw new AppError_1.default(http_status_1.default.INTERNAL_SERVER_ERROR, 'Failed to update Review!');
+            }
+            return result;
+        }
+        else {
+            if (task.ratingStatus === 'complete') {
+                throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Tasker is already rated!');
+            }
+            const reviewData = {
+                taskerId: task.taskerUserId,
+                posterId: user._id,
+                taskId: task._id,
+                rating: payload.rating,
+            };
+            const result = yield ratings_model_1.Review.create(reviewData);
+            const tasker = yield user_models_1.User.findById(task.taskerUserId);
+            if (!tasker) {
+                throw new AppError_1.default(http_status_1.default.NOT_FOUND, 'Tasker not found!');
+            }
+            let { reviews, rating } = tasker;
+            const newRating = (rating * reviews + result.rating) / (reviews + 1);
+            const updatedRegistration = yield user_models_1.User.findByIdAndUpdate(result.taskerId, {
+                reviews: reviews + 1,
+                rating: newRating,
+            }, { new: true });
+            const taskUpdate = yield taskPost_model_1.default.findByIdAndUpdate(task._id, {
+                ratingStatus: 'complete',
+            }, { new: true });
+            if (!updatedRegistration) {
+                throw new AppError_1.default(http_status_1.default.INTERNAL_SERVER_ERROR, 'Failed to update Review!');
+            }
+            return result;
+        }
+    }
+    catch (error) {
+        console.error('Error creating review:', error);
+        if (error instanceof AppError_1.default) {
+            throw error;
+        }
+        throw new AppError_1.default(http_status_1.default.INTERNAL_SERVER_ERROR, 'An unexpected error occurred while creating the review.');
+    }
 });
 const getAllReviewByBusinessQuery = (query, businessId) => __awaiter(void 0, void 0, void 0, function* () {
     const reviewQuery = new QueryBuilder_1.default(ratings_model_1.Review.find({ businessId }).populate('businessId').populate('customerId'), query)

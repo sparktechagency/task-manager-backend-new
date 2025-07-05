@@ -16,11 +16,19 @@ const stripe = {
     stripe_api_key: process.env.STRIPE_API_KEY,
     stripe_api_secret: process.env.STRIPE_API_SECRET,
 };
+const super_admin = {
+    email: process.env.SUPER_ADMIN_EMAIL,
+    password: process.env.SUPER_ADMIN_PASSWORD,
+};
 exports.default = {
     NODE_ENV: process.env.NODE_ENV,
     port: process.env.PORT,
     ip: process.env.IP,
     database_url: process.env.DATABASE_URL,
+    database_port: process.env.MONGODB_PORT,
+    database_name: process.env.DATABASE_NAME,
+    database_user_name: process.env.MONGODB_ADMINUSERNAME,
+    databse_user_password: process.env.MONGODB_ADMINPASSWORD,
     server_url: process.env.SERVER_URL,
     client_Url: process.env.CLIENT_URL,
     bcrypt_salt_rounds: process.env.BCRYPT_SALT_ROUNDS,
@@ -39,5 +47,6 @@ exports.default = {
     aws,
     stripe,
     googleApiKey: process.env.GOOGLEAPI,
+    super_admin,
     // user_jwt_token: process.env.USER_JWT_TOKEN,
 };

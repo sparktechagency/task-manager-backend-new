@@ -148,23 +148,46 @@ const getAllTaskOverviewByTaskerPosterQuery = (query, userId) => __awaiter(void 
         throw new AppError_1.default(404, 'User not found');
     }
     const updateUserId = user.role === 'tasker' ? 'taskerUserId' : 'posterUserId';
-    const tasksOngoing = yield taskPost_model_1.default.find({
-        [updateUserId]: userId,
-        status: ['ongoing', 'accept'],
-    }).countDocuments();
-    const tasksComplete = yield taskPost_model_1.default.find({
-        [updateUserId]: userId,
-        status: 'complete',
-    }).countDocuments();
-    const tasksCancel = yield taskPost_model_1.default.find({
-        [updateUserId]: userId,
-        status: 'cancel',
-    }).countDocuments();
-    return {
-        tasksOngoing,
-        tasksComplete,
-        tasksCancel,
-    };
+    if (user.role === 'poster') {
+        const tasksOngoing = yield taskPost_model_1.default.find({
+            [updateUserId]: userId,
+            status: ['ongoing', 'accept'],
+        }).countDocuments();
+        const tasksComplete = yield taskPost_model_1.default.find({
+            [updateUserId]: userId,
+            status: 'complete',
+        }).countDocuments();
+        const tasksCancel = yield taskPost_model_1.default.find({
+            [updateUserId]: userId,
+            status: 'cancel',
+        }).countDocuments();
+        return {
+            tasksOngoing,
+            tasksComplete,
+            tasksCancel,
+        };
+    }
+    else {
+        const tasksOngoing = yield taskPost_model_1.default.find({
+            [updateUserId]: userId,
+            status: ['ongoing', 'accept'],
+        }).countDocuments();
+        const tasksComplete = yield taskPost_model_1.default.find({
+            [updateUserId]: userId,
+            status: 'complete',
+        }).countDocuments();
+        console.log('userId', userId);
+        const tasksCancel = yield message_model_1.default.find({
+            sender: userId,
+            taskStatus: 'cencel',
+        }).countDocuments();
+        console.log('tasksCancel', tasksCancel);
+        return {
+            tasksOngoing,
+            tasksComplete,
+            tasksCancel,
+        };
+    }
 });
 const getAllCompleteIncomeTaskOverviewChartByTaskerQuery = (query, userId) => __awaiter(void 0, void 0, void 0, function* () {
     console.log('query', query);
@@ -403,6 +426,37 @@ const getAllTaskByTaskerPosterQuery = (query, posterTaskerUserId) => __awaiter(v
     const meta = yield TaskPostQuery.countTotal();
     return { meta, result };
 });
+const getAllCancleTaskByTaskerQuery = (query, taskerUserId) => __awaiter(void 0, void 0, void 0, function* () {
+    const page = Number(query === null || query === void 0 ? void 0 : query.page) || 1;
+    const limit = Number(query === null || query === void 0 ? void 0 : query.limit) || 10;
+    const skip = (page - 1) * limit;
+    // console.log('taskerUserId', taskerUserId);
+    const user = yield user_models_1.User.findById(taskerUserId);
+    if (!user) {
+        throw new AppError_1.default(404, 'User not found');
+    }
+    const allCancelTask = yield message_model_1.default.find({
+        sender: taskerUserId,
+        taskStatus: 'cencel',
+    })
+        .populate('taskId')
+        .skip(skip)
+        .limit(limit);
+    // console.log('allCancelTask', allCancelTask);
+    const taskIds = allCancelTask.map((task) => task.taskId);
+    // console.log('taskIds', taskIds);
+    const count = yield message_model_1.default.countDocuments({
+        sender: taskerUserId,
+        taskStatus: 'cencel',
+    });
+    const meta = {
+        page,
+        limit,
+        total: count,
+        totalPage: Math.ceil(count / limit),
+    };
+    return { meta, result: taskIds };
+});
 // const getAllTaskByTaskerQuery = async (
 //   query: Record<string, unknown>,
 //   taskerUserId: string,
@@ -530,6 +584,7 @@ const posterTaskAcceptedService = (payload) => __awaiter(void 0, void 0, void 0,
         console.log('first result', result);
         task.status = 'ongoing';
         task.taskerUserId = result.sender;
+        task.price = messageExist.offerPrice > 0 ? messageExist.offerPrice : task.price;
         yield task.save({ session });
         console.log('first taskPost', task);
         const allMessageUpdate = yield message_model_1.default.updateMany({
@@ -559,7 +614,7 @@ const posterTaskAcceptedService = (payload) => __awaiter(void 0, void 0, void 0,
         io.emit(senderMessage, updatedResult);
         yield session.commitTransaction();
         session.endSession();
-        return result;
+        return task;
     }
     catch (error) {
         yield session.abortTransaction();
@@ -567,7 +622,7 @@ const posterTaskAcceptedService = (payload) => __awaiter(void 0, void 0, void 0,
         throw error;
     }
 });
-const posterTaskCanceledService = (payload) => __awaiter(void 0, void 0, void 0, function* () {
+const posterTaskerTaskCanceledService = (payload) => __awaiter(void 0, void 0, void 0, function* () {
     console.log('cancel payload', payload);
     const chat = yield chat_model_1.default.findById(payload.chatId);
     const messageExist = yield message_model_1.default.findById(payload.messageId);
@@ -639,42 +694,53 @@ const taskPaymentRequestService = (userId, taskId) => __awaiter(void 0, void 0, 
     if (!task) {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Task not found!!');
     }
-    if (task.status !== 'complete') {
-        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Task is not completed!!');
-    }
+    // if (task.status !== 'complete') {
+    //   throw new AppError(httpStatus.BAD_REQUEST, 'Task is not completed!!');
+    // }
     if (task.paymentStatus === 'request') {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Task payment is already request!!');
     }
     const result = yield taskPost_model_1.default.findOneAndUpdate({ _id: taskId, taskerUserId: userId }, { paymentStatus: 'request' }, { new: true });
     return result;
 });
-const taskPaymentConfirmService = (posterId, taskId, taskerId) => __awaiter(void 0, void 0, void 0, function* () {
+const taskPaymentConfirmService = (posterId, taskId) => __awaiter(void 0, void 0, void 0, function* () {
     const session = yield mongoose_1.default.startSession();
     session.startTransaction();
     try {
+        const taskerId = yield taskPost_model_1.default.findOne({
+            _id: taskId,
+            posterUserId: posterId,
+        });
+        if (!taskerId) {
+            throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Tasker not found!!');
+        }
         const task = yield taskPost_model_1.default.findOne({
             _id: taskId,
-            taskerUserId: taskerId,
+            taskerUserId: taskerId.taskerUserId,
             posterUserId: posterId,
         }).session(session);
         if (!task) {
-            throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Task not found!!');
+            throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'you are not tasker!!');
         }
-        if (task.status !== 'complete') {
-            throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Task is not completed!!');
-        }
+        // if (task.status !== 'complete') {
+        //   throw new AppError(httpStatus.BAD_REQUEST, 'Task is not completed!!');
+        // }
         if (task.paymentStatus !== 'request') {
             throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Task payment is not request!!');
         }
-        const result = yield taskPost_model_1.default.findOneAndUpdate({ _id: taskId, taskerUserId: taskerId, posterUserId: posterId }, { paymentStatus: 'paid' }, { new: true, session });
+        const result = yield taskPost_model_1.default.findOneAndUpdate({
+            _id: taskId,
+            taskerUserId: taskerId.taskerUserId,
+            posterUserId: posterId,
+        }, { paymentStatus: 'paid', status: 'complete' }, { new: true, session }).populate('posterUserId').populate('taskerUserId');
         const wallet = yield wallet_model_1.Wallet.findOne({
-            userId: taskerId,
+            userId: taskerId.taskerUserId,
             // role: 'tasker',
         }).session(session);
         if (!wallet) {
             throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Wallet not found!!');
         }
-        const walletAmountAdd = yield wallet_model_1.Wallet.findOneAndUpdate({ userId: taskerId }, { $inc: { amount: task.price } }, { new: true, session });
+        const walletAmountAdd = yield wallet_model_1.Wallet.findOneAndUpdate({ userId: taskerId.taskerUserId }, { $inc: { amount: task.price } }, { new: true, session });
         if (!walletAmountAdd) {
             throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Wallet update failed!!');
         }
@@ -801,12 +867,13 @@ exports.taskPostService = {
     getAllTaskOverviewByPosterQuery,
     getAllTaskPostByFilterQuery,
     getAllTaskByTaskerPosterQuery,
+    getAllCancleTaskByTaskerQuery,
     taskAcceptByAdminQuery,
     taskCancelByAdminQuery,
     getSingleTaskPostQuery,
     deletedTaskPostQuery,
     posterTaskAcceptedService,
-    posterTaskCanceledService,
+    posterTaskerTaskCanceledService,
     taskPaymentRequestService,
     taskPaymentConfirmService,
     taskReviewConfirmService,

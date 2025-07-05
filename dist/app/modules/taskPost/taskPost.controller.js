@@ -142,6 +142,17 @@ const getAllTaskByTaskerPoster = (0, catchAsync_1.default)((req, res) => __await
         message: ' All Task Post are requered successful!!',
     });
 }));
+const getAllCancelTaskByTasker = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { userId } = req.user;
+    const { meta, result } = yield taskPost_service_1.taskPostService.getAllCancleTaskByTaskerQuery(req.query, userId);
+    (0, sendResponse_1.default)(res, {
+        success: true,
+        statusCode: http_status_1.default.OK,
+        meta: meta,
+        data: result,
+        message: ' All Cancel Task are requered successful!!',
+    });
+}));
 const getSingleTaskPost = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const result = yield taskPost_service_1.taskPostService.getSingleTaskPostQuery(req.params.id);
     (0, sendResponse_1.default)(res, {
@@ -522,9 +533,8 @@ const posterTaskAccepted = (0, catchAsync_1.default)((req, res) => __awaiter(voi
         message: 'Task Accepted Successfully!!',
     });
 }));
-const posterTaskCanceled = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const posterTaskerTaskCanceled = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
-    // const { userId } = req.user;
     const bodyData = req.body;
     const cancelRequestData = {
         taskId: id,
@@ -533,7 +543,7 @@ const posterTaskCanceled = (0, catchAsync_1.default)((req, res) => __awaiter(voi
     };
     // console.log('acceptRequestData', acceptRequestData);
     //   const result = await taskPostService.deletedTaskPostQuery(req.params.id);
-    const result = yield taskPost_service_1.taskPostService.posterTaskCanceledService(cancelRequestData);
+    const result = yield taskPost_service_1.taskPostService.posterTaskerTaskCanceledService(cancelRequestData);
     (0, sendResponse_1.default)(res, {
         success: true,
         statusCode: http_status_1.default.OK,
@@ -568,10 +578,9 @@ const taskPaymentRequest = (0, catchAsync_1.default)((req, res) => __awaiter(voi
 const taskPaymentConfirm = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
     const { userId } = req.user;
-    const { taskerId } = req.body;
     // console.log('acceptRequestData', acceptRequestData);
     //   const result = await taskPostService.deletedTaskPostQuery(req.params.id);
-    const result = yield taskPost_service_1.taskPostService.taskPaymentConfirmService(userId, id, taskerId);
+    const result = yield taskPost_service_1.taskPostService.taskPaymentConfirmService(userId, id);
     (0, sendResponse_1.default)(res, {
         success: true,
         statusCode: http_status_1.default.OK,
@@ -606,12 +615,13 @@ exports.taskPostController = {
     getAllTaskOverviewPoster,
     getAllTaskByFilter,
     getAllTaskByTaskerPoster,
+    getAllCancelTaskByTasker,
     taskAcceptByAdmin,
     taskCancelByAdmin,
     deleteSingleTaskPost,
     taskerTaskAcceptRequest,
     posterTaskAccepted,
-    posterTaskCanceled,
+    posterTaskerTaskCanceled,
     taskerTaskOfferRequest,
     posterAgainTaskOfferRequest,
     taskPaymentRequest,

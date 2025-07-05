@@ -20,9 +20,9 @@ const ratings_service_1 = require("./ratings.service");
 const createReview = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const reviewData = req.body;
     const { userId } = req.user;
-    // console.log({ userId });
-    reviewData.customerId = userId;
-    const result = yield ratings_service_1.reviewService.createReviewService(reviewData);
+    // // console.log({ userId });
+    // reviewData.posterId = userId;
+    const result = yield ratings_service_1.reviewService.createReviewService(reviewData, userId);
     // Send response
     (0, sendResponse_1.default)(res, {
         statusCode: http_status_1.default.OK,
