@@ -1,4 +1,5 @@
 services:
+
   mongo:
     container_name: mongo
     image: mongo
@@ -80,7 +81,7 @@ services:
     build:
       context: .
       dockerfile: ./Docker/Dockerfile
-    container_name: application2F
+    container_name: application2
     hostname: application2
     env_file:
       - .env
@@ -125,6 +126,7 @@ services:
         reservations:
           cpus: '0.25'
           memory: 256M
+
 
 networks:
   server-net:

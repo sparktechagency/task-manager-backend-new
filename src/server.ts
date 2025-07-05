@@ -51,9 +51,11 @@ async function main() {
   try {
     // Connect to MongoDB
     // await mongoose.connect(config.database_url as string);
-    await mongoose.connect(
-      `mongodb://${config.database_user_name}:${config.databse_user_password}@mongo:${config.database_port}/${config.database_name}?authSource=admin`,
-    );
+    // await mongoose.connect(
+    //   `mongodb://${config.database_user_name}:${config.databse_user_password}@mongo:${config.database_port}/${config.database_name}?authSource=admin`,
+    // );
+    await mongoose.connect(`mongodb://localhost:27017/taskflyapp`);
+
 
     // Create a single HTTP server from the Express app
     server = createServer(app);
