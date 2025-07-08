@@ -9,6 +9,10 @@ import Message from '../message/message.model';
 import { Wallet } from '../wallet/wallet.model';
 import { User } from '../user/user.models';
 import { notificationService } from '../notification/notification.service';
+import { CLIENT_RENEG_LIMIT } from 'tls';
+import moment from 'moment';
+import { Payment } from '../payment/payment.model';
+import Withdraw from '../withdraw/withdraw.model';
 
 const createTaskPostService = async (payload: TTaskPost) => {
   const isExistWallet: any = await Wallet.findOne({
@@ -256,58 +260,209 @@ const getAllCompleteIncomeTaskOverviewChartByTaskerQuery = async (
       {} as Record<string, number>,
     );
 
+    const incomeEntries = await Withdraw.find({
+      taskerUserId: userId,
+      status: 'completed',
+      updatedAt: { $gte: sevenDaysAgo, $lte: currentDate },
+    });
+    console.log('incomeEntries', incomeEntries);
+
+    const incomeByDay = incomeEntries.reduce(
+      (acc, entry:any) => {
+        const updatedAt = new Date(entry.updatedAt);
+        const day = updatedAt
+          .toLocaleDateString('en-US', { weekday: 'short' })
+          .toLowerCase();
+  
+        acc[day] = (acc[day] || 0) + (entry.amount || 0);
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+  
+
     result = allDays.map((day) => ({
       day,
       task: taskCountByDay[day] || 0,
+      income:incomeByDay[day] || 0,
     }));
   }
-  // else if (query.status === 'monthly') {
-  //   if (query.status === 'monthly') {
-  //     const tasksComplete = await TaskPost.find({
-  //       taskerUserId: userId,
-  //       status: 'complete',
-  //     });
+  else if (query.status === 'yearly') {
+    if (query.status === 'yearly') {
+      const tasksComplete = await TaskPost.find({
+        taskerUserId: userId,
+        status: 'complete',
+      });
 
-  //     const allMonths = [
-  //       'jan',
-  //       'feb',
-  //       'mar',
-  //       'apr',
-  //       'may',
-  //       'jun',
-  //       'jul',
-  //       'aug',
-  //       'sep',
-  //       'oct',
-  //       'nov',
-  //       'dec',
-  //     ];
+      const incomeEntries = await Withdraw.find({
+        taskerUserId: userId,
+        status: 'completed',
+      });
 
-  //     const taskCountByMonth = tasksComplete.reduce(
-  //       (acc, task) => {
-  //         const updatedAt = new Date(task.updatedAt);
-  //         const month = updatedAt
-  //           .toLocaleDateString('en-US', { month: 'short' })
-  //           .toLowerCase();
+      const allMonths = [
+        'jan',
+        'feb',
+        'mar',
+        'apr',
+        'may',
+        'jun',
+        'jul',
+        'aug',
+        'sep',
+        'oct',
+        'nov',
+        'dec',
+      ];
 
-  //         acc[month] = (acc[month] || 0) + 1;
-  //         return acc;
-  //       },
-  //       {} as Record<string, number>,
-  //     );
+      const taskCountByMonth = tasksComplete.reduce(
+        (acc, task) => {
+          const updatedAt = new Date(task.updatedAt);
+          const month = updatedAt
+            .toLocaleDateString('en-US', { month: 'short' })
+            .toLowerCase();
 
-  //     result = allMonths.map((month) => ({
-  //       day: month,
-  //       task: taskCountByMonth[month] || 0,
-  //     }));
+          acc[month] = (acc[month] || 0) + 1;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
+
+      // Group income by month
+      const incomeByMonth = incomeEntries.reduce(
+        (acc, entry:any) => {
+          const updatedAt = new Date(entry.updatedAt);
+          const month = updatedAt
+            .toLocaleDateString('en-US', { month: 'short' })
+            .toLowerCase();
+
+          acc[month] = (acc[month] || 0) + (entry.amount || 0); // Use correct field name
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
+
+      result = allMonths.map((month) => ({
+        day: month,
+        task: taskCountByMonth[month] || 0,
+        income: incomeByMonth[month] || 0,
+      }));
+    }
+
+  }
+  else if (query.status === 'monthly') {
+    if (query.status === 'monthly') {
+      const currentDate = new Date();
+      const currentYear = currentDate.getFullYear();
+      const currentMonth = currentDate.getMonth(); // 0 = Jan
+      const currentMonthDays = new Date(
+        currentYear,
+        currentMonth + 1,
+        0,
+      ).getDate();
+
+      const tasksComplete = await TaskPost.find({
+        taskerUserId: userId,
+        status: 'complete',
+      });
+
+      const incomeEntries:any = await Withdraw.find({
+        taskerUserId: userId,
+        status: 'completed',
+      });
+
+      const taskCountByDay: Record<string, number> = {};
+      const incomeByDay: Record<string, number> = {};
+
+      for (const task of tasksComplete) {
+        const updatedAt = new Date(task.updatedAt);
+        const taskYear = updatedAt.getFullYear();
+        const taskMonth = updatedAt.getMonth();
+
+        if (taskYear === currentYear && taskMonth === currentMonth) {
+          const day = updatedAt.getDate().toString().padStart(2, '0');
+          const month = (taskMonth + 1).toString().padStart(2, '0');
+          const year = taskYear.toString();
+          const dateKey = `${day}-${month}-${year}`;
+
+          taskCountByDay[dateKey] = (taskCountByDay[dateKey] || 0) + 1;
+        }
+      }
+
+      // Group income by day
+      for (const entry of incomeEntries) {
+        const updatedAt = new Date(entry.updatedAt);
+        const incomeYear = updatedAt.getFullYear();
+        const incomeMonth = updatedAt.getMonth();
+
+        if (incomeYear === currentYear && incomeMonth === currentMonth) {
+          const day = updatedAt.getDate().toString().padStart(2, '0');
+          const month = (incomeMonth + 1).toString().padStart(2, '0');
+          const year = incomeYear.toString();
+          const dateKey = `${day}-${month}-${year}`;
+          incomeByDay[dateKey] =
+            (incomeByDay[dateKey] || 0) + (entry.amount || 0); // Adjust 'amount' if your field is named differently
+        }
+      }
+
+      // Build full month response with all days
+      result = Array.from({ length: currentMonthDays }, (_, i) => {
+        // const day = (i + 1).toString().padStart(2, '0');
+        // const month = (currentMonth + 1).toString().padStart(2, '0');
+        // const year = currentYear.toString();
+        // const dateKey = `${month}-${day}`;
+        const date = new Date(currentYear, currentMonth, i + 1); // Valid Date
+        const dateKey = `${(i + 1).toString().padStart(2, '0')}-${(currentMonth + 1).toString().padStart(2, '0')}-${currentYear}`;
+
+        return {
+          day: moment(date).format('MMM DD'),
+          task: taskCountByDay[dateKey] || 0,
+          income: incomeByDay[dateKey] || 0,
+        };
+      });
+    }
+  }
+  // else if (query.startDate && query.endDate) {
+  //   const startDateRaw = query.startDate;
+  //   const endDateRaw = query.endDate;
+
+  //   // Validate input and convert to Date only if valid
+  //   const start =
+  //     typeof startDateRaw === 'string' || typeof startDateRaw === 'number'
+  //       ? new Date(startDateRaw)
+  //       : null;
+
+  //   const end =
+  //     typeof endDateRaw === 'string' || typeof endDateRaw === 'number'
+  //       ? new Date(endDateRaw)
+  //       : null;
+
+  //   if (!start || !end) {
+  //     throw new AppError(400, 'Invalid date format');
   //   }
+
+  //   end.setHours(23, 59, 59, 999);
+
+  //   const tasksComplete = await TaskPost.find({
+  //     taskerUserId: userId,
+  //     status: 'complete',
+  //     updatedAt: {
+  //       $gte: start,
+  //       $lte: end,
+  //     },
+  //   });
+
+  //   console.log('task ------------------', tasksComplete);
+
+  //   result = tasksComplete.map((task) => ({
+  //     day: moment(task.updatedAt).format('MMM DD'),
+  //     task: 1,
+  //   }));
 
   // }
   else if (query.startDate && query.endDate) {
     const startDateRaw = query.startDate;
     const endDateRaw = query.endDate;
 
-    // Validate input and convert to Date only if valid
     const start =
       typeof startDateRaw === 'string' || typeof startDateRaw === 'number'
         ? new Date(startDateRaw)
@@ -322,8 +477,9 @@ const getAllCompleteIncomeTaskOverviewChartByTaskerQuery = async (
       throw new AppError(400, 'Invalid date format');
     }
 
-    end.setHours(23, 59, 59, 999);
+    end.setHours(23, 59, 59, 999); // Ensure end of day is included
 
+    // Fetch completed tasks in date range
     const tasksComplete = await TaskPost.find({
       taskerUserId: userId,
       status: 'complete',
@@ -333,10 +489,60 @@ const getAllCompleteIncomeTaskOverviewChartByTaskerQuery = async (
       },
     });
 
-    result = tasksComplete.map((task) => ({
-      day: task.updatedAt,
-      task: 1,
-    }));
+    const incomeEntries:any = await Withdraw.find({
+      taskerUserId: userId,
+      status: 'completed',
+      updatedAt: {
+        $gte: start,
+        $lte: end,
+      },
+    });
+
+    // Group tasks by day key like: "01-07-2025"
+    const taskCountByDay: Record<string, number> = {};
+
+    for (const task of tasksComplete) {
+      const updatedAt = new Date(task.updatedAt);
+      const day = updatedAt.getDate().toString().padStart(2, '0');
+      const month = (updatedAt.getMonth() + 1).toString().padStart(2, '0');
+      const year = updatedAt.getFullYear();
+      const dateKey = `${day}-${month}-${year}`;
+
+      taskCountByDay[dateKey] = (taskCountByDay[dateKey] || 0) + 1;
+    }
+
+    // Group income by day key
+    const incomeByDay: Record<string, number> = {};
+    for (const entry of incomeEntries) {
+      const updatedAt = new Date(entry.updatedAt);
+      const day = updatedAt.getDate().toString().padStart(2, '0');
+      const month = (updatedAt.getMonth() + 1).toString().padStart(2, '0');
+      const year = updatedAt.getFullYear();
+      const dateKey = `${day}-${month}-${year}`;
+      incomeByDay[dateKey] = (incomeByDay[dateKey] || 0) + (entry.amount || 0); // ✅ replace `amount` if needed
+    }
+
+    // Build result from full date range
+    const resultList: { day: string; task: number; income: number }[] = [];
+    const current = new Date(start);
+
+    while (current <= end) {
+      const day = current.getDate().toString().padStart(2, '0');
+      const month = (current.getMonth() + 1).toString().padStart(2, '0');
+      const year = current.getFullYear();
+      const dateKey = `${day}-${month}-${year}`; // used for lookup
+
+      resultList.push({
+        day: moment(current).format('MMM DD'), // e.g., "Jul 01"
+        task: taskCountByDay[dateKey] || 0,
+        income: incomeByDay[dateKey] || 0,
+      });
+
+      // Move to next day
+      current.setDate(current.getDate() + 1);
+    }
+
+    result = resultList;
   } else {
     const currentDate = new Date();
     const sevenDaysAgo = new Date(currentDate);
@@ -918,7 +1124,9 @@ const taskPaymentRequestService = async (userId: string, taskId: string) => {
     { _id: taskId, taskerUserId: userId },
     { paymentStatus: 'request' },
     { new: true },
-  );
+  )
+    .populate('taskerUserId')
+    .populate('posterUserId');
   return result;
 };
 
