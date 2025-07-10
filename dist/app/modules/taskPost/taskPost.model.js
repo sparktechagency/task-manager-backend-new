@@ -105,7 +105,7 @@ const taskPostSchema = new mongoose_1.Schema({
     status: {
         type: String,
         enum: ['pending', 'accept', 'ongoing', 'complete', 'cancel'],
-        default: 'accept', //pending
+        default: 'pending', //pending
     },
     paymentStatus: {
         type: String,
