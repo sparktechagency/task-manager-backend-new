@@ -84,7 +84,7 @@ const taskPostSchema = new Schema(
     status: {
       type: String,
       enum: ['pending', 'accept', 'ongoing', 'complete', 'cancel'],
-      default: 'accept', //pending
+      default: 'pending', //pending
     },
     paymentStatus: {
       type: String,
