@@ -21,6 +21,7 @@ export interface TUserCreate {
   bsnNum: string;
   rating: number;
   reviews: number;
+  address:string;
 }
 
 export interface TUser extends TUserCreate {
