@@ -19,6 +19,9 @@ const createTaskPostService = async (payload: TTaskPost) => {
     userId: payload.posterUserId,
   });
 
+  console.log('isExistWallet', isExistWallet);
+
+
   if (!isExistWallet) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Wallet not found');
   }
@@ -30,9 +33,11 @@ const createTaskPostService = async (payload: TTaskPost) => {
   // );
 
   if (isExistWallet.amount === 0 || isExistWallet.amount < payload.price) {
+    console.log('dsfasfa')
     throw new AppError(402, 'Your wallet balance is insufficient');
   }
   const result = await TaskPost.create(payload);
+  console.log('result', result)
   if (result) {
     let remainingAmount = result.price;
 
