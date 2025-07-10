@@ -52,14 +52,7 @@ const createTaskPostService = async (payload: TTaskPost) => {
       throw new AppError(httpStatus.BAD_REQUEST, 'Wallet updated failed!!');
     }
 
-    // for (const wallet of isExistWallet) {
-    //   if (remainingAmount > 0) {
-    //     wallet.amount -= remainingAmount;
-    //     await wallet.save();
-    //   } else {
-    //     break;
-    //   }
-    // }
+   
 
     const data = {
       role: 'admin',
