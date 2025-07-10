@@ -14,7 +14,7 @@ adminBankInfoRouter
     bankInfoController.addBankInfo,
   )
   .get('/', bankInfoController.getbankInfo)
-  .patch('/update', auth(USER_ROLE.ADMIN), bankInfoController.updateBankInfo);
+  .patch('/update', auth(USER_ROLE.ADMIN, USER_ROLE.SUPER_ADMIN), bankInfoController.updateBankInfo);
   
 
 export default adminBankInfoRouter;
