@@ -74,6 +74,8 @@ const addWalletAmountService = async (userId: string, walet: any) => {
       method: walet.method,
       status: 'paid',
       price: walet.amount,
+      type: 'diposit',
+      transactionDate: new Date(),
     };
 
     const payment = await paymentService.addPaymentService(paymentData); 

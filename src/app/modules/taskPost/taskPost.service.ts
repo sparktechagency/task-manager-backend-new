@@ -13,6 +13,7 @@ import { CLIENT_RENEG_LIMIT } from 'tls';
 import moment from 'moment';
 import { Payment } from '../payment/payment.model';
 import Withdraw from '../withdraw/withdraw.model';
+import { paymentService } from '../payment/payment.service';
 
 const createTaskPostService = async (payload: TTaskPost) => {
   const isExistWallet: any = await Wallet.findOne({
@@ -52,8 +53,22 @@ const createTaskPostService = async (payload: TTaskPost) => {
       throw new AppError(httpStatus.BAD_REQUEST, 'Wallet updated failed!!');
     }
 
-   
+    const paymentData = {
+      posterUserId: result.posterUserId,
+      transactionId: result._id,
+      method: 'task',
+      status: 'paid',
+      price: result.price,
+      type: 'task',
+      transactionDate: new Date(),
+    };
 
+    const payment = await paymentService.addPaymentService(paymentData);
+    if (!payment) {
+      throw new AppError(400, 'Payment not found!');
+    }
+
+   
     const data = {
       role: 'admin',
       message: 'Task created successfully! Please Accept/Reject Task',
@@ -837,20 +852,75 @@ const taskAcceptByAdminQuery = async (id: string) => {
 };
 
 const taskCancelByAdminQuery = async (id: string) => {
-  if (!id) {
-    throw new AppError(400, 'Invalid id parameters');
-  }
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-  const result = await TaskPost.findByIdAndUpdate(
-    id,
-    { status: 'cancel' },
-    { new: true, runValidators: true },
-  );
 
-  if (!result) {
-    throw new AppError(404, 'Task cancel not found!!');
+  try {
+    if (!id) {
+      throw new AppError(400, 'Invalid id parameters');
+    }
+
+    const result = await TaskPost.findByIdAndUpdate(
+      id,
+      { status: 'cancel' },
+      { new: true, runValidators: true, session },
+    );
+
+    if (!result) {
+      throw new AppError(404, 'Task cancel not found!!');
+    }
+
+    const paymentData = {
+      posterUserId: result.posterUserId,
+      transactionId: result._id,
+      method: 'task',
+      status: 'paid',
+      price: result.price,
+      type: 'refund',
+      transactionDate: new Date(),
+    };
+
+    const payment = await paymentService.addPaymentService(paymentData, session);
+    if (!payment) {
+      throw new AppError(400, 'Payment not found!');
+    }
+
+    const walletAddMoney = await Wallet.findOneAndUpdate(
+      { userId: result.posterUserId },
+      { $inc: { amount: result.price } },
+      { new: true, runValidators: true, session },
+    );
+
+    if (!walletAddMoney) {
+      throw new AppError(400, 'Wallet not found!');
+    }
+
+    const notificationData = {
+      userId: result.posterUserId,
+      message: 'Your task has been canceled by admin',
+      type: 'warning',
+    };
+
+    const notification = await notificationService.createNotification(
+      notificationData,
+      session,
+    );
+    if (!notification) {
+      throw new AppError(400, 'Notification not found!');
+    }
+
+    await session.commitTransaction();
+    await session.endSession();
+
+    return result;
+    
+  } catch (error:any) {
+    await session.abortTransaction();
+    await session.endSession();
+    throw new AppError(error.statusCode, error.message);
   }
-  return result;
+  
 };
 
 const deletedTaskPostQuery = async (id: string) => {
@@ -1193,6 +1263,24 @@ const taskPaymentConfirmService = async (
     if (!walletAmountAdd) {
       throw new AppError(httpStatus.BAD_REQUEST, 'Wallet update failed!!');
     }
+
+    const withdrawData = {
+      taskerUserId: taskerId.taskerUserId,
+      amount: task.price,
+      method: 'task',
+      status: 'completed',
+      type: 'taskPayment',
+      taskName: task.taskName,
+    };
+
+    const taskPayment = await Withdraw.create([withdrawData], { session });
+
+
+    if (!taskPayment) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'Task payment failed!!');
+    }
+
+
 
     await session.commitTransaction();
     session.endSession();

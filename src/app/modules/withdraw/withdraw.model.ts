@@ -16,7 +16,7 @@ const withdrawSchema = new Schema<TWithdraw>(
     },
     method: {
       type: String,
-      enum: ['bank', 'paypal'],
+      enum: ['bank', 'paypal', 'task'],
       required: true,
     },
     status: {
@@ -50,6 +50,16 @@ const withdrawSchema = new Schema<TWithdraw>(
       required: false,
     },
     receiverEmail: {
+      type: String,
+      required: false,
+    },
+    type: {
+      type: String,
+      enum: ['withdraw', 'taskPayment'],
+      required: true,
+      default: 'withdraw',
+    },
+    taskName: {
       type: String,
       required: false,
     },

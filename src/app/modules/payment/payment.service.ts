@@ -24,13 +24,13 @@ export const stripe = new Stripe(
   // }
 );
 
-const addPaymentService = async (payload: any) => {
-  const poster = await User.findById(payload.posterUserId);
+const addPaymentService = async (payload: any, session?: any) => {
+  const poster = await User.findById(payload.posterUserId).session(session);
   if (!poster) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Poster not found');
   }
-  const result = await Payment.create(payload);
-  return result;
+  const result = await Payment.create([payload], { session } );
+  return result[0];
 };
 
 const getAllPaymentService = async (query: Record<string, unknown>) => {

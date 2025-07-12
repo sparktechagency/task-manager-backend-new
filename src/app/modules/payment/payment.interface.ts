@@ -7,4 +7,5 @@ export type TPayment = {
   status: string;
   transactionId?: string;
   transactionDate: Date;
+  type: string;
 };

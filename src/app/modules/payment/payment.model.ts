@@ -24,6 +24,12 @@ const paymentSchema = new Schema<TPayment>(
       type: Date,
       default: Date.now,
     },
+    type: {
+      type: String,
+      enum: ['diposit', 'task', 'refund'],
+      required: true,
+      default: 'diposit',
+    },
   },
   { timestamps: true },
 );

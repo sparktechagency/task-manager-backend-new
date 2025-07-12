@@ -89,6 +89,7 @@ const conformPaypalWithdrawService = async (payload: any) => {
       transactionId: payout.batch_header.payout_batch_id,
       transactionDate: new Date(),
       receiverEmail: receiverEmail,
+      type: 'withdraw',
     };
 
     const result = await Withdraw.create([withdrawData], { session });
@@ -124,7 +125,6 @@ const withdrawRequestService = async (payload: TWithdraw) => {
     throw new AppError(400, 'User is not authorized as a tasker!!');
   }
 
-  // Validate Withdrawal Amount
   if (!amount || amount <= 0) {
     throw new AppError(
       400,
@@ -151,6 +151,7 @@ const withdrawRequestService = async (payload: TWithdraw) => {
     throw new AppError(400, 'Insufficient wallet balance!');
   }
 
+  payload.type = 'withdraw';
 
   const result = await Withdraw.create(payload);
 

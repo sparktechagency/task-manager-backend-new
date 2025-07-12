@@ -310,7 +310,7 @@ const getAllUserQuery = async (query: Record<string, unknown>) => {
     .search([''])
     .filter()
     .sort()
-    .paginate()
+    // .paginate()
     .fields();
 
   const result = await userQuery.modelQuery;

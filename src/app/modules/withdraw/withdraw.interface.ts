@@ -12,4 +12,6 @@ export type TWithdraw = {
   currency?: string;
   payout_id: string;
   receiverEmail?: string;
+  type: string;
+  taskName?: string;
 };

@@ -9,9 +9,9 @@ adminBankInfoRouter
 
   .post(
     '/bank-info',
-    auth(USER_ROLE.ADMIN),
+    auth(USER_ROLE.ADMIN, USER_ROLE.SUPER_ADMIN),
     // validateRequest(videoValidation.VideoSchema),
-    bankInfoController.addBankInfo,
+    bankInfoController.addBankInfo
   )
   .get('/', bankInfoController.getbankInfo)
   .patch('/update', auth(USER_ROLE.ADMIN, USER_ROLE.SUPER_ADMIN), bankInfoController.updateBankInfo);
