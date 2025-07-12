@@ -50,7 +50,7 @@ const io: SocketIOServer = new SocketIOServer(socketServer, {
 async function main() {
   try {
     // Connect to MongoDB
-    await mongoose.connect(config.database_url as string);
+    // await mongoose.connect(config.database_url as string);
  
 
     // Create a single HTTP server from the Express app

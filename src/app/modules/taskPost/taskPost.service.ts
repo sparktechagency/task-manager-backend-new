@@ -839,6 +839,18 @@ const taskAcceptByAdminQuery = async (id: string) => {
     throw new AppError(400, 'Invalid id parameters');
   }
 
+  const taskPost = await TaskPost.findById(id);
+  if (!taskPost) {
+    throw new AppError(404, 'TaskPost not found!!');
+  }
+
+  if (taskPost.status === 'accept') {
+    throw new AppError(400, 'Task already accepted!!');
+  }
+  if (taskPost.status === 'cancel') {
+    throw new AppError(400, 'Task already canceled!!');
+  }
+
   const result = await TaskPost.findByIdAndUpdate(
     id,
     { status: 'accept' },
@@ -868,7 +880,7 @@ const taskCancelByAdminQuery = async (id: string) => {
     );
 
     if (!result) {
-      throw new AppError(404, 'Task cancel not found!!');
+      throw new AppError(404, 'Task already canceled!');
     }
 
     const paymentData = {
