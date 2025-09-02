@@ -23,6 +23,12 @@ const paymentSchema = new mongoose_1.Schema({
         type: Date,
         default: Date.now,
     },
+    type: {
+        type: String,
+        enum: ['diposit', 'task', 'refund'],
+        required: true,
+        default: 'diposit',
+    },
 }, { timestamps: true });
 // paymentSchema.pre('validate', function (next) {
 //   if (this.method === 'bank') {

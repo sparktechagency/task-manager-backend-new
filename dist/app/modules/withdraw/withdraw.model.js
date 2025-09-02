@@ -36,7 +36,7 @@ const withdrawSchema = new mongoose_1.Schema({
     },
     method: {
         type: String,
-        enum: ['bank', 'paypal'],
+        enum: ['bank', 'paypal', 'task'],
         required: true,
     },
     status: {
@@ -70,6 +70,16 @@ const withdrawSchema = new mongoose_1.Schema({
         required: false,
     },
     receiverEmail: {
+        type: String,
+        required: false,
+    },
+    type: {
+        type: String,
+        enum: ['withdraw', 'taskPayment'],
+        required: true,
+        default: 'withdraw',
+    },
+    taskName: {
         type: String,
         required: false,
     },

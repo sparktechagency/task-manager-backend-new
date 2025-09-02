@@ -73,6 +73,10 @@ const userSchema = new mongoose_1.Schema({
         type: Number,
         default: 0,
     },
+    address: {
+        type: String,
+        default: "",
+    },
 }, {
     timestamps: true,
     toJSON: {

@@ -9,9 +9,9 @@ const user_constants_1 = require("../user/user.constants");
 const adminBankInfo_controller_1 = require("./adminBankInfo.controller");
 const adminBankInfoRouter = express_1.default.Router();
 adminBankInfoRouter
-    .post('/bank-info', (0, auth_1.default)(user_constants_1.USER_ROLE.ADMIN), 
+    .post('/bank-info', (0, auth_1.default)(user_constants_1.USER_ROLE.ADMIN, user_constants_1.USER_ROLE.SUPER_ADMIN), 
 // validateRequest(videoValidation.VideoSchema),
 adminBankInfo_controller_1.bankInfoController.addBankInfo)
     .get('/', adminBankInfo_controller_1.bankInfoController.getbankInfo)
-    .patch('/update', (0, auth_1.default)(user_constants_1.USER_ROLE.ADMIN), adminBankInfo_controller_1.bankInfoController.updateBankInfo);
+    .patch('/update', (0, auth_1.default)(user_constants_1.USER_ROLE.ADMIN, user_constants_1.USER_ROLE.SUPER_ADMIN), adminBankInfo_controller_1.bankInfoController.updateBankInfo);
 exports.default = adminBankInfoRouter;

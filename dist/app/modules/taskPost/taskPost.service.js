@@ -30,34 +30,43 @@ const createTaskPostService = (payload) => __awaiter(void 0, void 0, void 0, fun
         userId: payload.posterUserId,
     });
     console.log('isExistWallet', isExistWallet);
-    if (!isExistWallet) {
-        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Wallet not found');
-    }
-    // Check if the total wallet balance is 0
-    // const totalBalance = isExistWallet.reduce(
-    //   (acc, wallet) => acc + wallet.amount,
-    //   0,
-    // );
-    if (isExistWallet.amount === 0 || isExistWallet.amount < payload.price) {
-        console.log('dsfasfa');
-        throw new AppError_1.default(402, 'Your wallet balance is insufficient');
-    }
+    // if (!isExistWallet) {
+    //   throw new AppError(httpStatus.BAD_REQUEST, 'Wallet not found');
+    // }
+    // // Check if the total wallet balance is 0
+    // // const totalBalance = isExistWallet.reduce(
+    // //   (acc, wallet) => acc + wallet.amount,
+    // //   0,
+    // // );
+    // if (isExistWallet.amount === 0 || isExistWallet.amount < payload.price) {
+    //   console.log('dsfasfa')
+    //   throw new AppError(402, 'Your wallet balance is insufficient');
+    // }
     const result = yield taskPost_model_1.default.create(payload);
     console.log('result', result);
     if (result) {
-        let remainingAmount = result.price;
-        const updateWalletAmount = yield wallet_model_1.Wallet.findOneAndUpdate({ userId: result.posterUserId }, { $inc: { amount: -remainingAmount } }, { new: true });
-        console.log('updateWalletAmount', updateWalletAmount);
-        if (!updateWalletAmount) {
-            throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Wallet updated failed!!');
-        }
-        // for (const wallet of isExistWallet) {
-        //   if (remainingAmount > 0) {
-        //     wallet.amount -= remainingAmount;
-        //     await wallet.save();
-        //   } else {
-        //     break;
-        //   }
+        // let remainingAmount = result.price;
+        // const updateWalletAmount = await Wallet.findOneAndUpdate(
+        //   { userId: result.posterUserId },
+        //   { $inc: { amount: -remainingAmount } },
+        //   { new: true },
+        // );
+        // console.log('updateWalletAmount', updateWalletAmount);
+        // if (!updateWalletAmount) {
+        //   throw new AppError(httpStatus.BAD_REQUEST, 'Wallet updated failed!!');
+        // }
+        // const paymentData = {
+        //   posterUserId: result.posterUserId,
+        //   transactionId: result._id,
+        //   method: 'task',
+        //   status: 'paid',
+        //   price: result.price,
+        //   type: 'task',
+        //   transactionDate: new Date(),
+        // };
+        // const payment = await paymentService.addPaymentService(paymentData);
+        // if (!payment) {
+        //   throw new AppError(400, 'Payment not found!');
         // }
         const data = {
             role: 'admin',
@@ -664,6 +673,16 @@ const taskAcceptByAdminQuery = (id) => __awaiter(void 0, void 0, void 0, functio
     if (!id) {
         throw new AppError_1.default(400, 'Invalid id parameters');
     }
+    const taskPost = yield taskPost_model_1.default.findById(id);
+    if (!taskPost) {
+        throw new AppError_1.default(404, 'TaskPost not found!!');
+    }
+    if (taskPost.status === 'accept') {
+        throw new AppError_1.default(400, 'Task already accepted!!');
+    }
+    if (taskPost.status === 'cancel') {
+        throw new AppError_1.default(400, 'Task already canceled!!');
+    }
     const result = yield taskPost_model_1.default.findByIdAndUpdate(id, { status: 'accept' }, { new: true, runValidators: true });
     if (!result) {
         throw new AppError_1.default(404, 'Task accept not found!!');
@@ -671,14 +690,55 @@ const taskAcceptByAdminQuery = (id) => __awaiter(void 0, void 0, void 0, functio
     return result;
 });
 const taskCancelByAdminQuery = (id) => __awaiter(void 0, void 0, void 0, function* () {
-    if (!id) {
-        throw new AppError_1.default(400, 'Invalid id parameters');
+    const session = yield mongoose_1.default.startSession();
+    session.startTransaction();
+    try {
+        if (!id) {
+            throw new AppError_1.default(400, 'Invalid id parameters');
+        }
+        const result = yield taskPost_model_1.default.findByIdAndUpdate(id, { status: 'cancel' }, { new: true, runValidators: true, session });
+        if (!result) {
+            throw new AppError_1.default(404, 'Task already canceled!');
+        }
+        // const paymentData = {
+        //   posterUserId: result.posterUserId,
+        //   transactionId: result._id,
+        //   method: 'task',
+        //   status: 'paid',
+        //   price: result.price,
+        //   type: 'refund',
+        //   transactionDate: new Date(),
+        // };
+        // const payment = await paymentService.addPaymentService(paymentData, session);
+        // if (!payment) {
+        //   throw new AppError(400, 'Payment not found!');
+        // }
+        // const walletAddMoney = await Wallet.findOneAndUpdate(
+        //   { userId: result.posterUserId },
+        //   { $inc: { amount: result.price } },
+        //   { new: true, runValidators: true, session },
+        // );
+        // if (!walletAddMoney) {
+        //   throw new AppError(400, 'Wallet not found!');
+        // }
+        const notificationData = {
+            userId: result.posterUserId,
+            message: 'Your task has been canceled by admin',
+            type: 'warning',
+        };
+        const notification = yield notification_service_1.notificationService.createNotification(notificationData, session);
+        if (!notification) {
+            throw new AppError_1.default(400, 'Notification not found!');
+        }
+        yield session.commitTransaction();
+        yield session.endSession();
+        return result;
     }
-    const result = yield taskPost_model_1.default.findByIdAndUpdate(id, { status: 'cancel' }, { new: true, runValidators: true });
-    if (!result) {
-        throw new AppError_1.default(404, 'Task cancel not found!!');
+    catch (error) {
+        yield session.abortTransaction();
+        yield session.endSession();
+        throw new AppError_1.default(error.statusCode, error.message);
     }
-    return result;
 });
 const deletedTaskPostQuery = (id) => __awaiter(void 0, void 0, void 0, function* () {
     const result = yield taskPost_model_1.default.findByIdAndDelete(id);
@@ -697,15 +757,32 @@ const posterTaskAcceptedService = (payload) => __awaiter(void 0, void 0, void 0,
     try {
         const chat = yield chat_model_1.default.findById(payload.chatId).session(session);
         const messageExist = yield message_model_1.default.findById(payload.messageId).session(session);
+        const task = yield taskPost_model_1.default.findById(payload.taskId).session(session);
+        if (!task) {
+            throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Task not found');
+        }
+        const taskUpdatePrice = messageExist.offerPrice > 0 ? messageExist.offerPrice : task.price;
+        const isExistWallet = yield wallet_model_1.Wallet.findOne({
+            userId: task.posterUserId,
+        });
+        console.log('isExistWallet', isExistWallet);
+        if (!isExistWallet) {
+            throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Wallet not found');
+        }
+        // Check if the total wallet balance is 0
+        // const totalBalance = isExistWallet.reduce(
+        //   (acc, wallet) => acc + wallet.amount,
+        //   0,
+        // );
+        if (isExistWallet.amount === 0 || isExistWallet.amount < taskUpdatePrice) {
+            console.log('dsfasfa');
+            throw new AppError_1.default(402, 'Your wallet balance is insufficient');
+        }
         if (!chat) {
             throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Chat not found');
         }
         if (!messageExist) {
             throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Message not found');
-        }
-        const task = yield taskPost_model_1.default.findById(payload.taskId).session(session);
-        if (!task) {
-            throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Task not found');
         }
         console.log('sdfafafasfsafa', task);
         if (task.status !== 'accept') {
@@ -763,6 +840,11 @@ const posterTaskAcceptedService = (payload) => __awaiter(void 0, void 0, void 0,
             { path: 'taskId' }, // This now reflects updated taskPost
         ])
             .session(session);
+        const updateWalletAmount = yield wallet_model_1.Wallet.findOneAndUpdate({ userId: task.posterUserId }, { $inc: { amount: -task.price } }, { new: true, runValidators: true, session });
+        console.log('updateWalletAmount', updateWalletAmount);
+        if (!updateWalletAmount) {
+            throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Wallet updated failed!!');
+        }
         const data = {
             userId: payload.receiver,
             message: 'Task Accept success!!',
@@ -905,6 +987,18 @@ const taskPaymentConfirmService = (posterId, taskId) => __awaiter(void 0, void 0
         const walletAmountAdd = yield wallet_model_1.Wallet.findOneAndUpdate({ userId: taskerId.taskerUserId }, { $inc: { amount: task.price } }, { new: true, session });
         if (!walletAmountAdd) {
             throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Wallet update failed!!');
+        }
+        const withdrawData = {
+            taskerUserId: taskerId.taskerUserId,
+            amount: task.price,
+            method: 'task',
+            status: 'completed',
+            type: 'taskPayment',
+            taskName: task.taskName,
+        };
+        const taskPayment = yield withdraw_model_1.default.create([withdrawData], { session });
+        if (!taskPayment) {
+            throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Task payment failed!!');
         }
         yield session.commitTransaction();
         session.endSession();

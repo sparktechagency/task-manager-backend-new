@@ -27,41 +27,15 @@ const io = new socket_io_1.Server(socketServer, {
         origin: '*',
     },
 });
-// async function main() {
-//   try {
-//     // console.log('config.database_url', config.database_url);
-//     // await mongoose.connect(config.database_url as string);
-//     await mongoose.connect(
-//       'mongodb+srv://taskmanager:taskmanagerPass@cluster0.jz4eg.mongodb.net/taskmanagerApp?retryWrites=true&w=majority&appName=Cluster0'
-//     );
-//     server = app.listen(Number(config.port), () => {
-//       console.log(
-//         colors.green(`App is listening on ${config.ip}:${config.port}`).bold,
-//       );
-//     });
-//     socketServer.listen(config.socket_port || 6000, () => {
-//       console.log(
-//         colors.yellow(
-//           `Socket is listening on ${config.ip}:${config.socket_port}`,
-//         ).bold,
-//       );
-//     });
-//     socketIO(io);
-//     global.io = io;
-//   } catch (err) {
-//     console.error('Error starting the server:', err);
-//     process.exit(1);
-//   }
-// }
 function main() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             // Connect to MongoDB
-            // await mongoose.connect(config.database_url as string);
+            yield mongoose_1.default.connect(config_1.default.database_url);
             // await mongoose.connect(
             //   `mongodb://${config.database_user_name}:${config.databse_user_password}@mongo:${config.database_port}/${config.database_name}?authSource=admin`,
             // );
-            yield mongoose_1.default.connect(`mongodb://localhost:27017/taskflyapp`);
+            // await mongoose.connect(`mongodb://localhost:27017/taskflyapp`);
             // Create a single HTTP server from the Express app
             server = (0, http_1.createServer)(app_1.default);
             // Attach Socket.IO to the same HTTP server

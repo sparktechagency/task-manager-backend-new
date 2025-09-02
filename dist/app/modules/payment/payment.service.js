@@ -25,13 +25,13 @@ const mongoose_1 = __importDefault(require("mongoose"));
 const stripeAccount_model_1 = require("../stripeAccount/stripeAccount.model");
 // console.log({ first: config.stripe.stripe_api_secret });
 exports.stripe = new stripe_1.default(config_1.default.stripe.stripe_api_secret);
-const addPaymentService = (payload) => __awaiter(void 0, void 0, void 0, function* () {
-    const poster = yield user_models_1.User.findById(payload.posterUserId);
+const addPaymentService = (payload, session) => __awaiter(void 0, void 0, void 0, function* () {
+    const poster = yield user_models_1.User.findById(payload.posterUserId).session(session);
     if (!poster) {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Poster not found');
     }
-    const result = yield payment_model_1.Payment.create(payload);
-    return result;
+    const result = yield payment_model_1.Payment.create([payload], { session });
+    return result[0];
 });
 const getAllPaymentService = (query) => __awaiter(void 0, void 0, void 0, function* () {
     const PaymentQuery = new QueryBuilder_1.default(payment_model_1.Payment.find({ status: "paid" }).populate('posterUserId'), query)

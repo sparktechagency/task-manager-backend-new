@@ -88,6 +88,7 @@ const conformPaypalWithdrawService = (payload) => __awaiter(void 0, void 0, void
             transactionId: payout.batch_header.payout_batch_id,
             transactionDate: new Date(),
             receiverEmail: receiverEmail,
+            type: 'withdraw',
         };
         const result = yield withdraw_model_1.default.create([withdrawData], { session });
         wallet.amount = wallet.amount - amount;
@@ -113,7 +114,6 @@ const withdrawRequestService = (payload) => __awaiter(void 0, void 0, void 0, fu
     if (tasker.role !== 'tasker') {
         throw new AppError_1.default(400, 'User is not authorized as a tasker!!');
     }
-    // Validate Withdrawal Amount
     if (!amount || amount <= 0) {
         throw new AppError_1.default(400, 'Invalid Withdrawal amount. It must be a positive number.');
     }
@@ -129,6 +129,7 @@ const withdrawRequestService = (payload) => __awaiter(void 0, void 0, void 0, fu
     if (wallet.amount < amount) {
         throw new AppError_1.default(400, 'Insufficient wallet balance!');
     }
+    payload.type = 'withdraw';
     const result = yield withdraw_model_1.default.create(payload);
     return result;
 });

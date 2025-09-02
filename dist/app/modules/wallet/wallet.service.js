@@ -97,6 +97,8 @@ const addWalletAmountService = (userId, walet) => __awaiter(void 0, void 0, void
             method: walet.method,
             status: 'paid',
             price: walet.amount,
+            type: 'diposit',
+            transactionDate: new Date(),
         };
         const payment = yield payment_service_1.paymentService.addPaymentService(paymentData);
         if (!payment) {

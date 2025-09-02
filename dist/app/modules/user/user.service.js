@@ -52,7 +52,7 @@ const createUserToken = (payload) => __awaiter(void 0, void 0, void 0, function*
     // console.log({ isExist });
     // console.log({ isExpireOtp });
     const { otp, expiredAt } = (0, otp_utils_1.generateOptAndExpireTime)();
-    // console.log({ otp });
+    console.log({ otp });
     // console.log({ expiredAt });
     let otpPurpose = 'email-verification';
     if (isExist && !isExpireOtp) {
@@ -250,7 +250,7 @@ const getAllUserQuery = (query) => __awaiter(void 0, void 0, void 0, function* (
         .search([''])
         .filter()
         .sort()
-        .paginate()
+        // .paginate()
         .fields();
     const result = yield userQuery.modelQuery;
     const meta = yield userQuery.countTotal();
