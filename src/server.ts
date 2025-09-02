@@ -17,36 +17,7 @@ const io: SocketIOServer = new SocketIOServer(socketServer, {
   },
 });
 
-// async function main() {
-//   try {
-//     // console.log('config.database_url', config.database_url);
 
-//     // await mongoose.connect(config.database_url as string);
-//     await mongoose.connect(
-//       'mongodb+srv://taskmanager:taskmanagerPass@cluster0.jz4eg.mongodb.net/taskmanagerApp?retryWrites=true&w=majority&appName=Cluster0'
-//     );
-   
-//     server = app.listen(Number(config.port), () => {
-//       console.log(
-//         colors.green(`App is listening on ${config.ip}:${config.port}`).bold,
-//       );
-//     });
-
-//     socketServer.listen(config.socket_port || 6000, () => {
-//       console.log(
-//         colors.yellow(
-//           `Socket is listening on ${config.ip}:${config.socket_port}`,
-//         ).bold,
-//       );
-//     });
-
-//     socketIO(io);
-//     global.io = io;
-//   } catch (err) {
-//     console.error('Error starting the server:', err);
-//     process.exit(1);
-//   }
-// }
 
 
 async function main() {
