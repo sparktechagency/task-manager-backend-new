@@ -46,7 +46,7 @@ const createUserToken = async (payload: TUserCreate) => {
   // console.log({ isExpireOtp });
 
   const { otp, expiredAt } = generateOptAndExpireTime();
-  // console.log({ otp });
+  console.log({ otp });
   // console.log({ expiredAt });
 
   let otpPurpose: TPurposeType = 'email-verification';

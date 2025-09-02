@@ -23,50 +23,50 @@ const createTaskPostService = async (payload: TTaskPost) => {
   console.log('isExistWallet', isExistWallet);
 
 
-  if (!isExistWallet) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Wallet not found');
-  }
+  // if (!isExistWallet) {
+  //   throw new AppError(httpStatus.BAD_REQUEST, 'Wallet not found');
+  // }
 
-  // Check if the total wallet balance is 0
-  // const totalBalance = isExistWallet.reduce(
-  //   (acc, wallet) => acc + wallet.amount,
-  //   0,
-  // );
+  // // Check if the total wallet balance is 0
+  // // const totalBalance = isExistWallet.reduce(
+  // //   (acc, wallet) => acc + wallet.amount,
+  // //   0,
+  // // );
 
-  if (isExistWallet.amount === 0 || isExistWallet.amount < payload.price) {
-    console.log('dsfasfa')
-    throw new AppError(402, 'Your wallet balance is insufficient');
-  }
+  // if (isExistWallet.amount === 0 || isExistWallet.amount < payload.price) {
+  //   console.log('dsfasfa')
+  //   throw new AppError(402, 'Your wallet balance is insufficient');
+  // }
   const result = await TaskPost.create(payload);
   console.log('result', result)
   if (result) {
-    let remainingAmount = result.price;
+    // let remainingAmount = result.price;
 
-    const updateWalletAmount = await Wallet.findOneAndUpdate(
-      { userId: result.posterUserId },
-      { $inc: { amount: -remainingAmount } },
-      { new: true },
-    );
-    console.log('updateWalletAmount', updateWalletAmount);
+    // const updateWalletAmount = await Wallet.findOneAndUpdate(
+    //   { userId: result.posterUserId },
+    //   { $inc: { amount: -remainingAmount } },
+    //   { new: true },
+    // );
+    // console.log('updateWalletAmount', updateWalletAmount);
 
-    if (!updateWalletAmount) {
-      throw new AppError(httpStatus.BAD_REQUEST, 'Wallet updated failed!!');
-    }
+    // if (!updateWalletAmount) {
+    //   throw new AppError(httpStatus.BAD_REQUEST, 'Wallet updated failed!!');
+    // }
 
-    const paymentData = {
-      posterUserId: result.posterUserId,
-      transactionId: result._id,
-      method: 'task',
-      status: 'paid',
-      price: result.price,
-      type: 'task',
-      transactionDate: new Date(),
-    };
+    // const paymentData = {
+    //   posterUserId: result.posterUserId,
+    //   transactionId: result._id,
+    //   method: 'task',
+    //   status: 'paid',
+    //   price: result.price,
+    //   type: 'task',
+    //   transactionDate: new Date(),
+    // };
 
-    const payment = await paymentService.addPaymentService(paymentData);
-    if (!payment) {
-      throw new AppError(400, 'Payment not found!');
-    }
+    // const payment = await paymentService.addPaymentService(paymentData);
+    // if (!payment) {
+    //   throw new AppError(400, 'Payment not found!');
+    // }
 
    
     const data = {
@@ -883,30 +883,30 @@ const taskCancelByAdminQuery = async (id: string) => {
       throw new AppError(404, 'Task already canceled!');
     }
 
-    const paymentData = {
-      posterUserId: result.posterUserId,
-      transactionId: result._id,
-      method: 'task',
-      status: 'paid',
-      price: result.price,
-      type: 'refund',
-      transactionDate: new Date(),
-    };
+    // const paymentData = {
+    //   posterUserId: result.posterUserId,
+    //   transactionId: result._id,
+    //   method: 'task',
+    //   status: 'paid',
+    //   price: result.price,
+    //   type: 'refund',
+    //   transactionDate: new Date(),
+    // };
 
-    const payment = await paymentService.addPaymentService(paymentData, session);
-    if (!payment) {
-      throw new AppError(400, 'Payment not found!');
-    }
+    // const payment = await paymentService.addPaymentService(paymentData, session);
+    // if (!payment) {
+    //   throw new AppError(400, 'Payment not found!');
+    // }
 
-    const walletAddMoney = await Wallet.findOneAndUpdate(
-      { userId: result.posterUserId },
-      { $inc: { amount: result.price } },
-      { new: true, runValidators: true, session },
-    );
+    // const walletAddMoney = await Wallet.findOneAndUpdate(
+    //   { userId: result.posterUserId },
+    //   { $inc: { amount: result.price } },
+    //   { new: true, runValidators: true, session },
+    // );
 
-    if (!walletAddMoney) {
-      throw new AppError(400, 'Wallet not found!');
-    }
+    // if (!walletAddMoney) {
+    //   throw new AppError(400, 'Wallet not found!');
+    // }
 
     const notificationData = {
       userId: result.posterUserId,
@@ -959,6 +959,36 @@ const posterTaskAcceptedService = async (payload: any) => {
       session,
     );
 
+    const task = await TaskPost.findById(payload.taskId).session(session);
+
+    if (!task) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'Task not found');
+    }
+
+    const taskUpdatePrice =
+      messageExist.offerPrice > 0 ? messageExist.offerPrice : task.price;
+
+     const isExistWallet: any = await Wallet.findOne({
+       userId: task.posterUserId,
+     });
+
+     console.log('isExistWallet', isExistWallet);
+
+    if (!isExistWallet) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'Wallet not found');
+    }
+
+    // Check if the total wallet balance is 0
+    // const totalBalance = isExistWallet.reduce(
+    //   (acc, wallet) => acc + wallet.amount,
+    //   0,
+    // );
+
+    if (isExistWallet.amount === 0 || isExistWallet.amount < taskUpdatePrice) {
+      console.log('dsfasfa');
+      throw new AppError(402, 'Your wallet balance is insufficient');
+    }
+
     if (!chat) {
       throw new AppError(httpStatus.BAD_REQUEST, 'Chat not found');
     }
@@ -966,11 +996,7 @@ const posterTaskAcceptedService = async (payload: any) => {
       throw new AppError(httpStatus.BAD_REQUEST, 'Message not found');
     }
 
-    const task = await TaskPost.findById(payload.taskId).session(session);
-
-    if (!task) {
-      throw new AppError(httpStatus.BAD_REQUEST, 'Task not found');
-    }
+    
     console.log('sdfafafasfsafa', task);
     if (task.status !== 'accept') {
       throw new AppError(httpStatus.BAD_REQUEST, 'Task is not accepted');
@@ -1054,6 +1080,18 @@ const posterTaskAcceptedService = async (payload: any) => {
         { path: 'taskId' }, // This now reflects updated taskPost
       ])
       .session(session);
+
+
+        const updateWalletAmount = await Wallet.findOneAndUpdate(
+          { userId: task.posterUserId },
+          { $inc: { amount: - task.price } },
+          { new: true, runValidators: true, session },
+        );
+        console.log('updateWalletAmount', updateWalletAmount);
+
+        if (!updateWalletAmount) {
+          throw new AppError(httpStatus.BAD_REQUEST, 'Wallet updated failed!!');
+        }
 
     const data = {
       userId: payload.receiver,
